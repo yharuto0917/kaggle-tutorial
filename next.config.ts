@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-	/* config options here */
+	// 親ディレクトリの lockfile を誤検出しないよう、ワークスペースルートを明示する。
+	turbopack: {
+		root: process.cwd(),
+	},
 };
 
 export default nextConfig;

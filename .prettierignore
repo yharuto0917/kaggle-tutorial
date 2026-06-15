@@ -1,0 +1,11 @@
+node_modules
+.next
+.open-next
+.wrangler
+out
+build
+coverage
+pnpm-lock.yaml
+*.tsbuildinfo
+next-env.d.ts
+cloudflare-env.d.ts
