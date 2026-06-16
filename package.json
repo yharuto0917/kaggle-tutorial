@@ -20,10 +20,14 @@
 		"typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate:local": "wrangler d1 migrations apply kaggle_tutorial_db --local",
-		"db:migrate:remote": "wrangler d1 migrations apply kaggle_tutorial_db --remote"
+		"db:migrate:remote": "wrangler d1 migrations apply kaggle_tutorial_db --remote",
+		"postinstall": "fumadocs-mdx"
 	},
 	"dependencies": {
 		"@opennextjs/cloudflare": "^1.19.9",
+		"fumadocs-core": "^16.10.2",
+		"fumadocs-mdx": "^15.0.12",
+		"katex": "^0.17.0",
 		"next": "16.2.6",
 		"react": "^19.1.7",
 		"react-dom": "^19.1.7"
@@ -31,6 +35,8 @@
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.16.15",
 		"@tailwindcss/postcss": "^4",
+		"@tailwindcss/typography": "^0.5.20",
+		"@types/mdx": "^2.0.14",
 		"@types/node": "^20.19.43",
 		"@types/react": "^19.1.7",
 		"@types/react-dom": "^19.1.7",
@@ -38,6 +44,8 @@
 		"eslint-config-next": "16.2.6",
 		"jsdom": "^29.1.1",
 		"prettier": "^3.8.4",
+		"rehype-katex": "^7.0.1",
+		"remark-math": "^6.0.0",
 		"tailwindcss": "^4",
 		"typescript": "^5.7.4",
 		"vitest": "^4.1.8",

@@ -1,0 +1,5 @@
+{
+	"title": "Python & データ分析基礎",
+	"description": "機械学習に必要な Python・pandas・可視化・EDA の基礎",
+	"pages": ["01-intro", "02-pandas"]
+}
