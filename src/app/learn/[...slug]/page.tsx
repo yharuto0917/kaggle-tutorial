@@ -1,5 +1,10 @@
+import { getBreadcrumbItems } from "fumadocs-core/breadcrumb";
+import { findNeighbour } from "fumadocs-core/page-tree";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
+import { PrevNext } from "@/components/layout/prev-next";
+import { Toc } from "@/components/layout/toc";
 import { source } from "@/lib/source";
 
 export function generateStaticParams() {
@@ -25,17 +30,28 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
 	const page = source.getPage(slug);
 	if (!page) notFound();
 
+	const tree = source.pageTree;
+	const breadcrumbs = [
+		{ name: "学習", url: "/learn" },
+		...getBreadcrumbItems(page.url, tree, { includePage: true }),
+	];
+	const { previous, next } = findNeighbour(tree, page.url);
 	const MDXContent = page.data.body;
 
 	return (
-		<main className="mx-auto max-w-3xl px-6 py-12">
-			<article className="prose prose-neutral max-w-none dark:prose-invert">
-				<h1>{page.data.title}</h1>
-				{page.data.description ? (
-					<p className="lead text-foreground/70">{page.data.description}</p>
-				) : null}
-				<MDXContent />
-			</article>
-		</main>
+		<div>
+			<Breadcrumbs items={breadcrumbs} />
+			<div className="flex gap-10">
+				<article className="prose prose-neutral min-w-0 max-w-none flex-1 dark:prose-invert">
+					<h1>{page.data.title}</h1>
+					{page.data.description ? (
+						<p className="lead text-foreground/70">{page.data.description}</p>
+					) : null}
+					<MDXContent />
+				</article>
+				<Toc items={page.data.toc} />
+			</div>
+			<PrevNext previous={previous} next={next} />
+		</div>
 	);
 }

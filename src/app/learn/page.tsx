@@ -9,7 +9,7 @@ export default function LearnIndexPage() {
 	const pages = source.getPages();
 
 	return (
-		<main className="mx-auto max-w-3xl px-6 py-16">
+		<div className="max-w-3xl">
 			<h1 className="text-3xl font-bold tracking-tight">学習カリキュラム</h1>
 			<p className="mt-2 text-foreground/70">Kaggle で学ぶ機械学習レッスンの一覧です（初版）。</p>
 			<ul className="mt-8 space-y-3">
@@ -24,6 +24,6 @@ export default function LearnIndexPage() {
 					</li>
 				))}
 			</ul>
-		</main>
+		</div>
 	);
 }
