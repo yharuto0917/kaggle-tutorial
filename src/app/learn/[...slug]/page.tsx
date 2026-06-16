@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PrevNext } from "@/components/layout/prev-next";
 import { Toc } from "@/components/layout/toc";
+import { mdxComponents } from "@/components/mdx/mdx-components";
 import { source } from "@/lib/source";
 
 export function generateStaticParams() {
@@ -47,7 +48,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
 					{page.data.description ? (
 						<p className="lead text-foreground/70">{page.data.description}</p>
 					) : null}
-					<MDXContent />
+					<MDXContent components={mdxComponents} />
 				</article>
 				<Toc items={page.data.toc} />
 			</div>
