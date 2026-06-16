@@ -1,4 +1,4 @@
-import { docs } from "@/.source/server";
+import { competitions, docs } from "@/.source/server";
 import { loader } from "fumadocs-core/source";
 
 /**
@@ -8,4 +8,10 @@ import { loader } from "fumadocs-core/source";
 export const source = loader({
 	baseUrl: "/learn",
 	source: docs.toFumadocsSource(),
+});
+
+/** content/competitions 配下のコンペウォークスルーを /competitions 以下として提供する loader。 */
+export const competitionsSource = loader({
+	baseUrl: "/competitions",
+	source: competitions.toFumadocsSource(),
 });

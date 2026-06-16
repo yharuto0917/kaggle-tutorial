@@ -11,6 +11,11 @@ export const docs = defineDocs({
 	dir: "content/learn",
 });
 
+/** コンペウォークスルー（content/competitions 配下の MDX）のコレクション定義。 */
+export const competitions = defineDocs({
+	dir: "content/competitions",
+});
+
 export default defineConfig({
 	mdxOptions: {
 		// 数式（$...$ / $$...$$）を KaTeX でビルド時に HTML 化する。
