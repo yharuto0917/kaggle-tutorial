@@ -10,7 +10,7 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
 
 	return (
 		<aside className="hidden w-60 shrink-0 md:block">
-			<nav className="sticky top-8 space-y-6">
+			<nav className="sticky top-20 space-y-6">
 				{groups.map((group, index) => (
 					<div key={group.title ?? `group-${index}`}>
 						{group.title ? (
