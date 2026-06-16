@@ -21,6 +21,12 @@ export function SiteHeader() {
 					>
 						コンペ
 					</Link>
+					<Link
+						href="/glossary"
+						className="text-foreground/70 transition-colors hover:text-foreground"
+					>
+						用語集
+					</Link>
 				</nav>
 			</div>
 		</header>
