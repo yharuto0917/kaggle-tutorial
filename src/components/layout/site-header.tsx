@@ -15,6 +15,12 @@ export function SiteHeader() {
 					>
 						学習
 					</Link>
+					<Link
+						href="/competitions"
+						className="text-foreground/70 transition-colors hover:text-foreground"
+					>
+						コンペ
+					</Link>
 				</nav>
 			</div>
 		</header>
