@@ -1,0 +1,50 @@
+---
+title: Kaggle API / CLI のセットアップ
+description: kaggle.json で認証し、コマンドラインからデータ取得・提出を自動化する方法を学びます。
+---
+
+## Kaggle API とは
+
+公式の **kaggle CLI** を使うと、ブラウザを開かずにコマンドラインから
+データのダウンロードや提出ができます。ローカル開発や自動化に便利です。
+
+## インストールと認証
+
+```bash
+pip install kaggle
+```
+
+次に API トークンを取得します。Kaggle の **Settings → API → Create New Token** で
+`kaggle.json`（ユーザー名とキー）がダウンロードされるので、所定の場所に置きます。
+
+```bash
+# macOS / Linux
+mkdir -p ~/.kaggle
+mv ~/Downloads/kaggle.json ~/.kaggle/kaggle.json
+chmod 600 ~/.kaggle/kaggle.json
+```
+
+<Callout type="warning">
+	`kaggle.json` は**パスワード相当の秘密情報**です。リポジトリにコミットしたり
+	他人と共有したりしないでください（漏れたら Settings から失効・再発行）。
+</Callout>
+
+## よく使うコマンド
+
+```bash
+# コンペ一覧
+kaggle competitions list
+
+# コンペデータのダウンロード（規約への同意が必要）
+kaggle competitions download -c titanic
+
+# 予測の提出
+kaggle competitions submit -c titanic -f submission.csv -m "first baseline"
+
+# データセットのダウンロード
+kaggle datasets download -d <owner>/<dataset>
+```
+
+## 次のステップ
+
+最後に、ローカル環境とクラウド（Kaggle Notebook / Google Colab）の使い分けを整理します。
