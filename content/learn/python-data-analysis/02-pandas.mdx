@@ -38,6 +38,10 @@ df.groupby("Pclass")["Survived"].mean()
 生存率の比較から、客室クラス（`Pclass`）が予測に効きそうだと分かります。
 特徴量の重要度はおおまかに $\text{重要度} \propto$ 目的変数との関連の強さ、と捉えられます。
 
+<Callout type="tip">
+	`groupby` の結果はそのまま棒グラフにすると、カテゴリごとの傾向を直感的に掴めます。
+</Callout>
+
 ## 次のステップ
 
 次は可視化（matplotlib / seaborn）と EDA の進め方に進みます。
