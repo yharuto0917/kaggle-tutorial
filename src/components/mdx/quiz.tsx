@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useLessonId } from "@/components/progress/lesson-context";
 import { useQuizResult } from "@/hooks/use-quiz-result";
 import { gradeQuiz, isMultipleChoice, normalizeAnswer, type QuizProps } from "@/lib/quiz";
+import { markCompleted } from "@/lib/progress-store";
 
 type Draft = { selected: number[]; submitted: boolean };
 
@@ -15,6 +17,7 @@ export function Quiz({ id, question, options, answer, explanation }: QuizProps) 
 	const multiple = isMultipleChoice(answer);
 	const correct = normalizeAnswer(answer);
 	const { result, save } = useQuizResult(id);
+	const lessonId = useLessonId();
 
 	// draft が null の間は保存済みの結果に従い、ユーザーが操作したら draft が優先される。
 	// こうすることで「保存済み結果の復元」を effect なしで表現できる。
@@ -37,6 +40,8 @@ export function Quiz({ id, question, options, answer, explanation }: QuizProps) 
 		const isCorrect = gradeQuiz(answer, selected);
 		setDraft({ selected, submitted: true });
 		save({ correct: isCorrect, selected, answeredAt: Date.now() });
+		// クイズ達成連動: 正解したらレッスンを完了にする（レッスン内でのみ）。
+		if (isCorrect && lessonId) markCompleted(lessonId);
 	};
 
 	const handleRetry = () => {
