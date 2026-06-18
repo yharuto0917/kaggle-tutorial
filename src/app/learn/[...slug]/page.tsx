@@ -6,6 +6,8 @@ import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PrevNext } from "@/components/layout/prev-next";
 import { Toc } from "@/components/layout/toc";
 import { mdxComponents } from "@/components/mdx/mdx-components";
+import { LessonProvider } from "@/components/progress/lesson-context";
+import { LessonProgressButton } from "@/components/progress/lesson-progress-button";
 import { source } from "@/lib/source";
 
 export function generateStaticParams() {
@@ -48,7 +50,10 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
 					{page.data.description ? (
 						<p className="lead text-foreground/70">{page.data.description}</p>
 					) : null}
-					<MDXContent components={mdxComponents} />
+					<LessonProvider lessonId={page.url}>
+						<MDXContent components={mdxComponents} />
+					</LessonProvider>
+					<LessonProgressButton lessonId={page.url} />
 				</article>
 				<Toc items={page.data.toc} />
 			</div>
