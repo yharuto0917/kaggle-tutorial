@@ -73,6 +73,16 @@ outliers = df[(df["Fare"] < lower) | (df["Fare"] > upper)]
 	kaggle="https://www.kaggle.com/competitions/titanic"
 />
 
+## 理解度チェック
+
+<Quiz
+	id="outlier-detect"
+	question="外れ値の検出に使える代表的な手法はどれ？（複数選択）"
+	options={["IQR 法", "z-score", "中央値での補完", "ワンホットエンコーディング"]}
+	answer={[0, 1]}
+	explanation="IQR 法と z-score は外れ値検出の定番です。中央値補完は欠損値への対処、ワンホットエンコーディングはカテゴリ変数の数値化で、いずれも外れ値検出の手法ではありません。"
+/>
+
 ## このトラックのまとめ
 
 - NumPy のベクトル化と broadcasting で、数値処理を高速・簡潔に書ける
