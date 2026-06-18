@@ -1,0 +1,14 @@
+{
+	"title": "実践入門コンペ",
+	"description": "Titanic（分類）と House Prices（回帰）を題材に、EDA から提出・改善までを実践するトラック",
+	"pages": [
+		"01-how-to-approach",
+		"02-titanic-eda",
+		"03-titanic-baseline",
+		"04-titanic-cv",
+		"05-house-prices-eda",
+		"06-house-prices-baseline",
+		"07-house-prices-ensemble",
+		"08-submission-debugging"
+	]
+}

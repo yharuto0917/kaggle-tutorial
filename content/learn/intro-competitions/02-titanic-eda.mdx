@@ -1,0 +1,68 @@
+---
+title: 【Titanic】問題理解と EDA
+description: Titanic コンペの課題設定を理解し、生存に効きそうな特徴を EDA で見つけます。
+---
+
+## 課題を理解する
+
+[Titanic](/competitions/titanic) は、乗客の属性から **生存（0/1）を予測する二値[[分類]]**です。
+評価指標は [[正解率]]（Accuracy）、提出は `PassengerId` と `Survived` の 2 列 CSV です。
+
+```python
+import pandas as pd
+
+train = pd.read_csv("/kaggle/input/titanic/train.csv")
+test = pd.read_csv("/kaggle/input/titanic/test.csv")
+train.shape, test.shape   # ((891, 12), (418, 11))
+```
+
+## まず目的変数を見る
+
+```python
+train["Survived"].value_counts(normalize=True)
+# 0(死亡) ≈ 0.62, 1(生存) ≈ 0.38
+```
+
+約 6:4 で、極端な[[クラス不均衡]]ではありません。Accuracy で素直に評価できます。
+
+## 効きそうな特徴を探す
+
+```python
+# 性別ごとの生存率
+train.groupby("Sex")["Survived"].mean()
+# female ≈ 0.74, male ≈ 0.19
+
+# 客室クラスごとの生存率
+train.groupby("Pclass")["Survived"].mean()
+# 1 ≈ 0.63, 2 ≈ 0.47, 3 ≈ 0.24
+```
+
+**性別**と**客室クラス**が生存に強く効くことが分かります。これが最初の特徴量の軸になります。
+
+<Callout type="tip">
+	「女性・上位クラスほど助かりやすい」という傾向は、可視化（`sns.barplot`）でも一目で確認できます。
+	EDA の発見はそのまま特徴量設計の根拠になります。
+</Callout>
+
+## 欠損を把握する
+
+```python
+train.isnull().mean().sort_values(ascending=False)
+# Cabin ≈ 0.77, Age ≈ 0.20, Embarked ≈ 0.002
+```
+
+`Cabin` は欠損が多く扱いに注意、`Age` は補完が必要、と方針が立ちます。
+
+## 理解度チェック
+
+<Quiz
+	id="l3-02"
+	question="Titanic の EDA で、生存に強く効くと分かる代表的な特徴の組み合わせは？"
+	options={["乗船港と運賃のみ", "性別と客室クラス（Pclass）", "PassengerId と Name"]}
+	answer={1}
+	explanation="性別（女性が高い）と客室クラス（上位ほど高い）が生存率に強く効きます。最初の特徴量の軸になります。"
+/>
+
+## 次のステップ
+
+次は、この理解をもとに前処理・ベースライン作成・提出まで一気に通します。
