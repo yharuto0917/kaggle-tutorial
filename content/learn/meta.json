@@ -4,6 +4,7 @@
 		"python-data-analysis",
 		"ml-basics",
 		"intro-competitions",
-		"feature-engineering"
+		"feature-engineering",
+		"gradient-boosting"
 	]
 }

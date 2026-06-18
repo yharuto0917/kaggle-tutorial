@@ -1,0 +1,57 @@
+---
+title: 3大 GBDT 比較・使い分け・重要パラメータ
+description: XGBoost / LightGBM / CatBoost の特徴と使い分け、共通する重要パラメータと早期終了を整理します。
+---
+
+## 3 大 GBDT の比較
+
+| 観点                 | [[XGBoost]]  | [[LightGBM]]      | [[CatBoost]]         |
+| -------------------- | ------------ | ----------------- | -------------------- |
+| 速度                 | 標準         | **高速**          | 標準                 |
+| 木の成長             | level-wise   | **leaf-wise**     | symmetric（対称木）  |
+| カテゴリ             | 要エンコード | `category` 型対応 | **自動処理が強力**   |
+| 既定の強さ           | 要調整       | 要調整            | **デフォルトが強い** |
+| 複雑さの主パラメータ | `max_depth`  | `num_leaves`      | `depth`              |
+
+## 使い分けの目安
+
+- **まず速く回したい / 大規模** → [[LightGBM]]
+- **カテゴリが多い / 調整を最小化** → [[CatBoost]]
+- **実績ある安定択 / 細かく正則化** → [[XGBoost]]
+
+最終的には複数を学習し、[[ブレンディング]]や[[スタッキング]]で混ぜると単体より安定して伸びます。
+
+## 共通する重要パラメータ
+
+| 概念           | XGBoost            | LightGBM           | CatBoost        |
+| -------------- | ------------------ | ------------------ | --------------- |
+| [[学習率]]     | `learning_rate`    | `learning_rate`    | `learning_rate` |
+| 木の本数       | `n_estimators`     | `n_estimators`     | `iterations`    |
+| 木の複雑さ     | `max_depth`        | `num_leaves`       | `depth`         |
+| 行サンプリング | `subsample`        | `subsample`        | `subsample`     |
+| 列サンプリング | `colsample_bytree` | `colsample_bytree` | `rsm`           |
+| L2 [[正則化]]  | `reg_lambda`       | `reg_lambda`       | `l2_leaf_reg`   |
+
+## 早期終了は全部で使う
+
+どの実装でも、大きめの木数を設定して[[早期終了]]に最適本数を決めさせるのが定石です。
+検証スコアが改善しなくなった時点で止めることで、[[過学習]]を防ぎつつ最良の本数を得られます。
+
+<Callout type="tip">
+	調整は「学習率を小さめに固定 → 木の複雑さ（深さ/num_leaves）→ サンプリング → 正則化」の順に
+	[[交差検証]]で詰めると効率的です。学習率は最後にさらに下げて本数を増やすと、もうひと伸びします。
+</Callout>
+
+## 理解度チェック
+
+<Quiz
+	id="l5-07"
+	question="「大規模データを高速に回したい」ときにまず選ぶ GBDT 実装は？"
+	options={["XGBoost", "LightGBM", "CatBoost"]}
+	answer={1}
+	explanation="leaf-wise 成長で高速・省メモリな LightGBM が大規模・高速用途の第一候補です。カテゴリが多いなら CatBoost も有力です。"
+/>
+
+## 次のステップ
+
+最後に、これらのパラメータを効率的に探索するハイパーパラメータ最適化を学びます。

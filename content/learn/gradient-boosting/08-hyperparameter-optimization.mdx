@@ -1,0 +1,82 @@
+---
+title: ハイパラ最適化 — Grid/Random・Optuna
+description: グリッド/ランダム探索と Optuna によるベイズ最適化で、ハイパーパラメータを効率的に探索します。
+---
+
+## 探索方法の比較
+
+[[ハイパーパラメータ]]の探索方法には大きく 3 つあります。
+
+| 方法                       | 概要                               | 特徴                               |
+| -------------------------- | ---------------------------------- | ---------------------------------- |
+| **Grid Search**            | 候補の全組み合わせを試す           | 網羅的だが組み合わせ爆発で高コスト |
+| **Random Search**          | ランダムに候補を試す               | 少ない試行でも当たりやすい         |
+| **ベイズ最適化（Optuna）** | 過去の結果から有望な領域を重点探索 | 少ない試行で効率的                 |
+
+## Optuna によるベイズ最適化
+
+Optuna は、試行結果を使って次に試す値を賢く選ぶライブラリです。
+**目的関数で [[交差検証]] スコアを返す**のが基本形です。
+
+```python
+import optuna
+import lightgbm as lgb
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+def objective(trial):
+    params = {
+        "n_estimators": 1000,
+        "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.2, log=True),
+        "num_leaves": trial.suggest_int("num_leaves", 16, 256),
+        "subsample": trial.suggest_float("subsample", 0.6, 1.0),
+        "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
+        "reg_lambda": trial.suggest_float("reg_lambda", 1e-3, 10.0, log=True),
+        "random_state": 42,
+    }
+    model = lgb.LGBMClassifier(**params)
+    return cross_val_score(model, X, y, cv=cv, scoring="roc_auc").mean()
+
+study = optuna.create_study(direction="maximize")
+study.optimize(objective, n_trials=50)
+print(study.best_params, study.best_value)
+```
+
+## 探索空間の設計が肝心
+
+- **対数スケール**で振るべき値（学習率・正則化）は `log=True` を指定する
+- 範囲は広すぎず狭すぎず。まず粗く探索し、良い領域を絞って再探索する
+- **木の本数は最適化せず**、大きめ固定＋[[早期終了]]に任せると安定する
+
+<Callout type="warning">
+	最適化のたびに同じ CV 分割（固定シード）で評価しないと、スコアの上下が探索ノイズに埋もれます。
+	また Optuna で CV スコアを**過度に追い込む**と検証データに過適合します。最後は別シードの CV
+	で確認しましょう。
+</Callout>
+
+## このトラックのまとめ
+
+- 決定木 → バギング（[[ランダムフォレスト]]）/ ブースティング（[[勾配ブースティング（GBDT）]]）
+- 3 大 GBDT は LightGBM=高速・CatBoost=カテゴリ強・XGBoost=安定。早期終了が共通の要
+- ハイパラは Random / Optuna で効率探索し、探索空間とシードを丁寧に設計する
+- 単体に留めず、複数モデルの[[ブレンディング]]/[[スタッキング]]で底上げする
+
+## 理解度チェック
+
+<Quiz
+	id="l5-08"
+	question="Optuna でハイパラ最適化するとき、木の本数（n_estimators）の扱いとして適切なのは？"
+	options={[
+		"探索対象に入れて細かく最適化する",
+		"大きめに固定し、早期終了に最適本数を決めさせる",
+		"必ず最小値にする",
+	]}
+	answer={1}
+	explanation="木の本数は最適化せず大きめ固定＋早期終了に任せると安定します。学習率・複雑さ・正則化などを探索対象にします。"
+/>
+
+## 次のステップ
+
+Phase 2 の基礎トラック（L2〜L5）はここで一区切りです。以降のトラック（L6 アンサンブル &
+ワークフロー、L7 ディープラーニング、L8 上級）で、さらに実戦的な技術へ進みます。
