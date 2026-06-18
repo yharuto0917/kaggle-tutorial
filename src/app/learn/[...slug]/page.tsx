@@ -45,7 +45,10 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
 		<div>
 			<Breadcrumbs items={breadcrumbs} />
 			<div className="flex gap-10">
-				<article className="prose prose-neutral min-w-0 max-w-none flex-1 dark:prose-invert">
+				<article
+					data-pagefind-body
+					className="prose prose-neutral min-w-0 max-w-none flex-1 dark:prose-invert"
+				>
 					<h1>{page.data.title}</h1>
 					{page.data.description ? (
 						<p className="lead text-foreground/70">{page.data.description}</p>

@@ -27,6 +27,14 @@ export function SiteHeader() {
 					>
 						用語集
 					</Link>
+					<Link
+						href="/search"
+						aria-label="サイト内検索"
+						className="flex items-center gap-1 text-foreground/70 transition-colors hover:text-foreground"
+					>
+						<span aria-hidden>🔍</span>
+						<span>検索</span>
+					</Link>
 				</nav>
 			</div>
 		</header>

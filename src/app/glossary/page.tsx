@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function GlossaryPage() {
 	return (
-		<main className="mx-auto max-w-3xl px-6 py-16">
+		<main data-pagefind-body className="mx-auto max-w-3xl px-6 py-16">
 			<h1 className="text-3xl font-bold tracking-tight">用語集</h1>
 			<p className="mt-2 text-foreground/70">
 				機械学習・Kaggle の主要用語をまとめています。本文中の用語リンクからもここへ移動できます。

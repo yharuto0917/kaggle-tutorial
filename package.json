@@ -6,6 +6,8 @@
 	"scripts": {
 		"dev": "next dev",
 		"build": "next build",
+		"postbuild": "pnpm pagefind",
+		"pagefind": "pagefind --site .next/server/app --output-path public/pagefind",
 		"start": "next start",
 		"lint": "eslint .",
 		"format": "prettier --write .",
@@ -46,6 +48,7 @@
 		"eslint": "^9",
 		"eslint-config-next": "16.2.6",
 		"jsdom": "^29.1.1",
+		"pagefind": "^1.5.2",
 		"prettier": "^3.8.4",
 		"rehype-katex": "^7.0.1",
 		"remark-math": "^6.0.0",
