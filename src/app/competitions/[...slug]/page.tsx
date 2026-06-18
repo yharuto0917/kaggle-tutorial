@@ -35,7 +35,10 @@ export default async function CompetitionPage({ params }: { params: Promise<{ sl
 		<div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
 			<Breadcrumbs items={breadcrumbs} />
 			<div className="flex gap-10">
-				<article className="prose prose-neutral min-w-0 max-w-none flex-1 dark:prose-invert">
+				<article
+					data-pagefind-body
+					className="prose prose-neutral min-w-0 max-w-none flex-1 dark:prose-invert"
+				>
 					<h1>{page.data.title}</h1>
 					{page.data.description ? (
 						<p className="lead text-foreground/70">{page.data.description}</p>
