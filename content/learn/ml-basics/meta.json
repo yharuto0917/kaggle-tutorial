@@ -1,0 +1,14 @@
+{
+	"title": "機械学習の基礎",
+	"description": "タスク設定・検証・評価指標・最初のモデルまで、機械学習の基礎理論を固めるトラック",
+	"pages": [
+		"01-what-is-ml",
+		"02-problem-framing",
+		"03-train-test-split",
+		"04-cross-validation",
+		"05-metrics-regression",
+		"06-metrics-classification",
+		"07-scikit-learn-api",
+		"08-first-models"
+	]
+}

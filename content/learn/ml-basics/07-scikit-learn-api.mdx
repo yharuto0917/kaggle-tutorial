@@ -1,0 +1,72 @@
+---
+title: scikit-learn 基本 API
+description: fit / predict / transform という共通インターフェースと、Pipeline で前処理と学習をまとめる方法を学びます。
+---
+
+## 一貫した API
+
+scikit-learn の強みは、どのモデルも**同じインターフェース**で扱えることです。
+
+- `fit(X, y)`：データから学習する
+- `predict(X)`：予測する（分類はラベル）
+- `predict_proba(X)`：クラス確率を返す（[[AUC]] や [[LogLoss]] 用）
+- `transform(X)`：前処理（変換）を適用する。`fit_transform` で学習と変換を同時に
+
+```python
+from sklearn.linear_model import LogisticRegression
+
+model = LogisticRegression(max_iter=1000)
+model.fit(X_train, y_train)          # 学習
+pred = model.predict(X_valid)        # ラベル予測
+proba = model.predict_proba(X_valid)[:, 1]  # 陽性クラスの確率
+```
+
+## Pipeline で前処理と学習をまとめる
+
+前処理（[[標準化]]や欠損補完）とモデルを `Pipeline` にまとめると、
+**前処理が訓練データだけにフィットされ**、検証・テストへ正しく適用されます。
+これは[[交差検証]]内での[[データリーク]]を防ぐ最も実用的な方法です。
+
+```python
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+
+pipe = Pipeline([
+    ("imputer", SimpleImputer(strategy="median")),
+    ("scaler", StandardScaler()),
+    ("model", LogisticRegression(max_iter=1000)),
+])
+
+pipe.fit(X_train, y_train)
+pipe.score(X_valid, y_valid)
+```
+
+<Callout type="tip">
+	`cross_val_score(pipe, X, y, cv=...)` のように Pipeline ごと交差検証に渡すと、 各 fold で前処理が
+	fold 内だけにフィットされ、リークのない正しい評価になります。
+</Callout>
+
+<RunLinks
+	colab="https://colab.research.google.com/"
+	kaggle="https://www.kaggle.com/competitions/titanic"
+/>
+
+## 理解度チェック
+
+<Quiz
+	id="ml2-07"
+	question="標準化などの前処理を Pipeline にまとめて交差検証に渡す主な利点は？"
+	options={[
+		"コードが短くなるだけで挙動は変わらない",
+		"各 fold で前処理が訓練側だけにフィットされ、データリークを防げる",
+		"予測が必ず速くなる",
+	]}
+	answer={1}
+	explanation="Pipeline を CV に渡すと、前処理が各 fold の訓練側だけにフィットされて検証側へ適用されるため、リークのない評価になります。"
+/>
+
+## 次のステップ
+
+最後に、基本的なモデル（線形/ロジスティック回帰・決定木）を実際に動かします。

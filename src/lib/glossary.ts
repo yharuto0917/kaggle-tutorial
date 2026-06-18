@@ -158,6 +158,12 @@ export const glossary: GlossaryEntry[] = [
 		definition: "正解ラベルを使わず、データ自体の構造（クラスタや分布）を見つける枠組み。",
 	},
 	{
+		slug: "reinforcement-learning",
+		term: "強化学習",
+		aliases: ["reinforcement learning", "RL"],
+		definition: "試行錯誤を通じて報酬が最大になる行動方針を学ぶ枠組み。ゲームや制御で使われる。",
+	},
+	{
 		slug: "classification",
 		term: "分類",
 		aliases: ["classification", "分類問題"],
@@ -185,7 +191,7 @@ export const glossary: GlossaryEntry[] = [
 	{
 		slug: "underfitting",
 		term: "未学習（過少適合）",
-		aliases: ["過少適合", "underfitting"],
+		aliases: ["未学習", "過少適合", "underfitting"],
 		definition: "モデルが単純すぎて、訓練データの傾向すら捉えきれていない状態。",
 	},
 	{
