@@ -1,0 +1,78 @@
+---
+title: pandas 基礎 I — 読み込み・選択・フィルタ
+description: Series と DataFrame の基本、CSV の読み込み、列・行の選択、条件によるフィルタリングを学びます。
+---
+
+## Series と DataFrame
+
+pandas の中心は 2 つのデータ構造です。
+
+- **Series**：ラベル付きの 1 次元配列（1 列分のデータ）
+- **DataFrame**：複数の Series を束ねた表（行＝レコード、列＝特徴量）
+
+Kaggle のテーブルコンペは、この DataFrame を読み込むところから始まります。
+
+## 読み込みと中身の把握
+
+```python
+import pandas as pd
+
+df = pd.read_csv("/kaggle/input/titanic/train.csv")
+
+df.shape        # (891, 12) 行数・列数
+df.head()       # 先頭 5 行
+df.info()       # 列名・非欠損数・型
+df.describe()   # 数値列の要約統計（平均・分位点など）
+```
+
+<Callout type="tip">
+	データを読み込んだら、まず `shape` → `head` → `info` → `describe`
+	の順で全体像をつかむのが定石です。 列の意味と型を最初に把握しておくと、後の処理で迷いません。
+</Callout>
+
+## 列の選択
+
+```python
+df["Age"]                 # 単一列（Series）
+df[["Age", "Fare"]]       # 複数列（DataFrame）
+```
+
+## 行・列の選択：loc と iloc
+
+- **`loc`**：ラベル（列名・インデックス名）で選択
+- **`iloc`**：位置（整数）で選択
+
+```python
+df.loc[0, "Name"]              # 0 行目の Name
+df.loc[df["Age"] > 60, "Name"] # 条件に合う行の Name
+df.iloc[0:5, 0:3]             # 先頭 5 行・先頭 3 列
+```
+
+## 条件によるフィルタ（ブールインデックス）
+
+条件式は `True`/`False` の Series を返し、それで行を絞り込みます。
+複数条件は `&`（かつ）・`|`（または）でつなぎ、各条件を `()` で囲むのが必須です。
+
+```python
+# 女性かつ 3 等客室
+mask = (df["Sex"] == "female") & (df["Pclass"] == 3)
+df[mask].shape
+
+# 生存率を比較
+df[df["Sex"] == "female"]["Survived"].mean()  # 女性の生存率
+df[df["Sex"] == "male"]["Survived"].mean()    # 男性の生存率
+```
+
+<Callout type="warning">
+	`and` / `or` ではなく `&` / `|` を使い、各条件を必ず括弧で囲みます。
+	`df[df["a"] > 0 & df["b"] > 0]` は演算子の優先順位でエラーになります。
+</Callout>
+
+<RunLinks
+	colab="https://colab.research.google.com/"
+	kaggle="https://www.kaggle.com/competitions/titanic"
+/>
+
+## 次のステップ
+
+次は pandas の集計・結合（groupby・merge・pivot・apply）を学びます。
