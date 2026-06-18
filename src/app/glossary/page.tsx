@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { glossary } from "@/lib/glossary";
 
 export const metadata = {
@@ -9,7 +10,7 @@ export default function GlossaryPage() {
 		<main className="mx-auto max-w-3xl px-6 py-16">
 			<h1 className="text-3xl font-bold tracking-tight">用語集</h1>
 			<p className="mt-2 text-foreground/70">
-				機械学習・Kaggle の主要用語（初版）。本文中の用語リンクからもここへ移動できます。
+				機械学習・Kaggle の主要用語をまとめています。本文中の用語リンクからもここへ移動できます。
 			</p>
 			<dl className="mt-8 space-y-6">
 				{glossary.map((entry) => (
@@ -27,6 +28,20 @@ export default function GlossaryPage() {
 							) : null}
 						</dt>
 						<dd className="mt-1 text-sm text-foreground/70">{entry.definition}</dd>
+						{entry.related && entry.related.length > 0 ? (
+							<dd className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-foreground/60">
+								<span>関連レッスン:</span>
+								{entry.related.map((lesson) => (
+									<Link
+										key={lesson.href}
+										href={lesson.href}
+										className="text-blue-600 hover:underline dark:text-blue-400"
+									>
+										{lesson.title}
+									</Link>
+								))}
+							</dd>
+						) : null}
 					</div>
 				))}
 			</dl>
