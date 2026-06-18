@@ -1,0 +1,64 @@
+---
+title: 交差検証（K-Fold）の考え方
+description: 交差検証で性能を安定して評価する方法、層化・グループ・時系列分割の使い分けを学びます。
+---
+
+## 1 回の分割では不安定
+
+ホールドアウト（1 回だけの分割）は手軽ですが、**たまたまの分け方**でスコアが上下します。
+[[交差検証]]は、分割を変えて複数回評価し、その平均を取ることで**安定した見積もり**を得ます。
+
+## K-Fold のしくみ
+
+[[K-Fold]]では、データを K 個に分け、各回 1 つを検証・残り K−1 個を訓練として K 回学習します。
+
+```text
+Fold1: [検証][訓練][訓練][訓練][訓練]
+Fold2: [訓練][検証][訓練][訓練][訓練]
+   …（K 回繰り返し、スコアを平均）
+```
+
+各 fold の検証側に対する予測をつなげたものが [[OOF]]（Out-of-Fold）で、
+スコア評価やアンサンブルに使います。
+
+```python
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.linear_model import LogisticRegression
+
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+scores = cross_val_score(LogisticRegression(max_iter=1000), X, y, cv=skf)
+print(scores.mean(), scores.std())
+```
+
+## 分割方法を「データの性質」に合わせる
+
+| 手法                      | 使うとき                                         |
+| ------------------------- | ------------------------------------------------ |
+| **[[K-Fold]]**            | 基本。各 fold をランダムに分ける                 |
+| **[[Stratified K-Fold]]** | 分類でクラス比率を保ちたい（不均衡データで重要） |
+| **[[Group K-Fold]]**      | 同一ユーザー等が訓練と検証に跨らないようにする   |
+| **[[時系列分割]]**        | 過去で学習し未来で検証する（時系列のリーク防止） |
+
+<Callout type="warning">
+	データの性質に合わない分割は、検証スコアを当てにならなくします。
+	グループ構造や時間順を無視すると[[データリーク]]が起き、[[シェイクアップ]]の原因になります。
+</Callout>
+
+<RunLinks
+	colab="https://colab.research.google.com/"
+	kaggle="https://www.kaggle.com/competitions/titanic"
+/>
+
+## 理解度チェック
+
+<Quiz
+	id="ml2-04"
+	question="クラスが不均衡な二値分類で、各 fold のクラス比率を全体とそろえたい。適切な分割は？"
+	options={["通常の K-Fold", "Stratified K-Fold", "時系列分割"]}
+	answer={1}
+	explanation="クラス比率を保って分割するのが Stratified K-Fold です。不均衡データで検証を安定させるのに重要です。"
+/>
+
+## 次のステップ
+
+次は、回帰タスクの代表的な**評価指標（RMSE / MAE / RMSLE / R²）**を学びます。
