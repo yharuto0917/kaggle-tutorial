@@ -1,0 +1,72 @@
+---
+title: LightGBM 実践
+description: 高速・省メモリな LightGBM の特徴（leaf-wise・num_leaves・カテゴリ対応）と使い方を学びます。
+---
+
+## LightGBM とは
+
+[[LightGBM]] は、Microsoft 製の高速・省メモリな [[勾配ブースティング（GBDT）]] 実装です。
+大規模データでも速く、Kaggle のテーブルコンペで最もよく使われる主力の一つです。
+
+## leaf-wise 成長
+
+XGBoost が階層ごと（level-wise）に木を広げるのに対し、LightGBM は
+**損失が最も減る葉から伸ばす（leaf-wise）**ため、少ない分割で高精度になりやすい反面、
+深くなりすぎて[[過学習]]しやすい面もあります。
+
+そのため木の複雑さは `max_depth` ではなく **`num_leaves`** で制御するのが要点です。
+
+```python
+import lightgbm as lgb
+
+model = lgb.LGBMClassifier(
+    n_estimators=2000,
+    learning_rate=0.05,
+    num_leaves=31,        # 木の複雑さ（2^max_depth より小さく保つ）
+    subsample=0.8,
+    colsample_bytree=0.8,
+    reg_lambda=1.0,
+    random_state=42,
+)
+model.fit(
+    X_tr, y_tr,
+    eval_set=[(X_va, y_va)], eval_metric="auc",
+    callbacks=[lgb.early_stopping(100), lgb.log_evaluation(0)],
+)
+```
+
+## カテゴリ変数のネイティブ対応
+
+LightGBM は[[カテゴリ変数]]を `category` 型にしておくと、One-Hot 化せずに直接扱えます。
+
+```python
+for c in cat_cols:
+    X_tr[c] = X_tr[c].astype("category")
+# fit 時に categorical_feature=cat_cols を指定（または category 型を自動認識）
+```
+
+<Callout type="warning">
+	`num_leaves` を大きくしすぎると一気に[[過学習]]します。`num_leaves` は `2^max_depth`
+	より小さく保ち、`min_child_samples` と合わせて複雑さを調整しましょう。
+</Callout>
+
+<Callout type="tip">
+	速いので、[[交差検証]]を回しながら特徴量やパラメータを試すループに向いています。 まず LightGBM
+	で素早く回し、必要に応じて XGBoost / CatBoost と[[ブレンディング]]するのが定番です。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 理解度チェック
+
+<Quiz
+	id="l5-05"
+	question="LightGBM で木の複雑さを制御する際に最も重要なパラメータは？"
+	options={["max_features", "num_leaves", "n_jobs"]}
+	answer={1}
+	explanation="LightGBM は leaf-wise 成長のため、num_leaves で複雑さを制御します。大きすぎると過学習します。"
+/>
+
+## 次のステップ
+
+次は、カテゴリ変数の扱いに強い CatBoost を実践します。

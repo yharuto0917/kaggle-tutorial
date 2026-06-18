@@ -403,7 +403,7 @@ export const glossary: GlossaryEntry[] = [
 	{
 		slug: "early-stopping",
 		term: "早期終了（Early Stopping）",
-		aliases: ["Early Stopping"],
+		aliases: ["早期終了", "Early Stopping"],
 		definition: "検証スコアが改善しなくなった時点で学習を打ち切り、過学習を防ぐ手法。",
 	},
 
