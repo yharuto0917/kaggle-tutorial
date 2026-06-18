@@ -1,5 +1,9 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import { cloudflareTest } from "@cloudflare/vitest-pool-workers";
+
+// `@/` を src/ へ解決する（tsconfig の paths とそろえる）。
+const srcDir = fileURLToPath(new URL("./src", import.meta.url));
 
 /**
  * Next.js 16 / OpenNext (Cloudflare Workers) 向けテスト基盤。
@@ -17,9 +21,11 @@ export default defineConfig({
 	test: {
 		projects: [
 			{
+				resolve: { alias: [{ find: /^@\//, replacement: `${srcDir}/` }] },
 				test: {
 					name: "unit",
 					environment: "jsdom",
+					setupFiles: ["./vitest.setup.ts"],
 					include: ["src/**/*.unit.test.{ts,tsx}"],
 				},
 			},
