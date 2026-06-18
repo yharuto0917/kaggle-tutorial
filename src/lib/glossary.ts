@@ -115,7 +115,7 @@ export const glossary: GlossaryEntry[] = [
 	{
 		slug: "binning",
 		term: "ビニング（離散化）",
-		aliases: ["離散化", "binning"],
+		aliases: ["ビニング", "離散化", "binning"],
 		definition: "連続値を区間に区切ってカテゴリ化する変換。非線形な関係や外れ値の緩和に使う。",
 	},
 	{
@@ -387,7 +387,7 @@ export const glossary: GlossaryEntry[] = [
 	{
 		slug: "adversarial-validation",
 		term: "敵対的検証（Adversarial Validation）",
-		aliases: ["Adversarial Validation"],
+		aliases: ["敵対的検証", "Adversarial Validation"],
 		definition: "train/test を判別する分類器を作り、両者の分布差を検出・対策する手法。",
 	},
 	{

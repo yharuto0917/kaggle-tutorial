@@ -1,0 +1,56 @@
+---
+title: 検証戦略 I — 分割方法の使い分け
+description: KFold / Stratified / Group / TimeSeriesSplit を、データの構造に合わせて選ぶ方法を学びます。
+---
+
+## 検証は「本番の予測状況」を再現する
+
+[[交差検証]]の目的は、**本番（テスト）で予測する状況を手元で再現する**ことです。
+データの構造（クラス・グループ・時間）を無視した分割は、当てにならないスコアを生みます。
+
+## 分割方法の使い分け
+
+| 手法                      | 使う場面                 | 狙い                                 |
+| ------------------------- | ------------------------ | ------------------------------------ |
+| **[[K-Fold]]**            | i.i.d. な一般データ      | 標準。ランダムに K 分割              |
+| **[[Stratified K-Fold]]** | 分類（特に不均衡）       | 各 fold のクラス比率を保つ           |
+| **[[Group K-Fold]]**      | 同一エンティティが複数行 | 同じグループを訓練と検証に跨らせない |
+| **[[時系列分割]]**        | 時系列データ             | 過去で学習し未来で検証する           |
+
+```python
+from sklearn.model_selection import StratifiedKFold, GroupKFold, TimeSeriesSplit
+
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+gkf = GroupKFold(n_splits=5)                  # groups= を指定
+tss = TimeSeriesSplit(n_splits=5)             # 時間順を保つ
+```
+
+## グループリークの例
+
+同じユーザーの行が訓練と検証の両方に入ると、モデルは「そのユーザーを覚える」だけで
+高スコアを出し、本番（未知ユーザー）で崩れます。これがグループリークです。
+
+```python
+# ユーザー単位で分割し、同一ユーザーが跨らないようにする
+for tr, va in gkf.split(X, y, groups=df["user_id"]):
+    ...
+```
+
+<Callout type="warning">
+	時系列で通常の K-Fold を使うと、**未来のデータで過去を予測**してしまい[[データリーク]]になります。
+	時間順序のあるデータでは必ず時系列分割を使いましょう。
+</Callout>
+
+## 理解度チェック
+
+<Quiz
+	id="l4-07"
+	question="同じユーザーの行が複数あるデータで、本番（未知ユーザー）の性能を正しく測る分割は？"
+	options={["通常の K-Fold", "Group K-Fold（ユーザー単位で分割）", "行をシャッフルしてから K-Fold"]}
+	answer={1}
+	explanation="同一ユーザーが訓練と検証に跨るとグループリークになります。Group K-Fold でユーザー単位に分けると本番の状況を再現できます。"
+/>
+
+## 次のステップ
+
+次は、CV と LB の関係やリーク検出（adversarial validation 入口）を学びます。

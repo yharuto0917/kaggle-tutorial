@@ -1,3 +1,9 @@
 {
-	"pages": ["kaggle-onboarding", "python-data-analysis", "ml-basics", "intro-competitions"]
+	"pages": [
+		"kaggle-onboarding",
+		"python-data-analysis",
+		"ml-basics",
+		"intro-competitions",
+		"feature-engineering"
+	]
 }
