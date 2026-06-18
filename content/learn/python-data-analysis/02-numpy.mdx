@@ -1,0 +1,89 @@
+---
+title: NumPy 基礎 — 配列・ベクトル化・broadcasting
+description: ndarray の生成と操作、ループを避けるベクトル化、broadcasting の仕組みを学びます。
+---
+
+## なぜ NumPy か
+
+NumPy の `ndarray`（多次元配列）は、数値計算を**高速・簡潔**に書くための土台です。
+pandas も内部は NumPy で動いており、機械学習ライブラリの入出力も配列が基本になります。
+
+## 配列の生成
+
+```python
+import numpy as np
+
+a = np.array([1, 2, 3])            # リストから生成
+z = np.zeros((2, 3))               # 2×3 のゼロ行列
+r = np.arange(0, 10, 2)            # [0 2 4 6 8]
+lin = np.linspace(0, 1, 5)         # 0〜1 を 5 等分
+print(a.shape, a.dtype)            # (3,) int64
+```
+
+`shape`（形）と `dtype`（型）は常に意識します。形の不一致はエラーの定番原因です。
+
+## ベクトル化：ループを書かない
+
+要素ごとの計算は、Python の `for` ではなく**配列演算**で書きます。
+内部が C で実装されているため、桁違いに高速です。
+
+```python
+x = np.arange(1_000_000)
+
+# 悪い例：Python ループは遅い
+# total = 0
+# for v in x:
+#     total += v ** 2
+
+# 良い例：ベクトル化（1 行・高速）
+total = (x ** 2).sum()
+```
+
+<Callout type="tip">
+	`%timeit (x ** 2).sum()` と Python ループを比べると、ベクトル化が 100 倍以上速いことを
+	実感できます。「ループを書きたくなったら配列演算で書けないか」を先に考えましょう。
+</Callout>
+
+## 集約と axis
+
+合計・平均などは `axis` で集約方向を指定します。`axis=0` は列方向、`axis=1` は行方向です。
+
+```python
+m = np.array([[1, 2, 3],
+              [4, 5, 6]])
+
+m.sum()           # 21（全体）
+m.sum(axis=0)     # [5 7 9]（列ごと）
+m.mean(axis=1)    # [2. 5.]（行ごと）
+```
+
+## broadcasting
+
+形の異なる配列どうしの演算では、NumPy が自動で形を**引き伸ばして**そろえます。
+これを broadcasting と呼びます。
+
+```python
+m = np.array([[1, 2, 3],
+              [4, 5, 6]])
+col_mean = m.mean(axis=0)     # [2.5 3.5 4.5]
+
+centered = m - col_mean       # 各列から列平均を引く（中心化）
+```
+
+`m`（形 `2×3`）と `col_mean`（形 `3,`）が、行方向に引き伸ばされて計算されます。
+標準化のように「列ごとの統計量で各列を変換する」処理が 1 行で書けます。
+
+$$
+x_{\text{std}} = \frac{x - \mu}{\sigma}
+$$
+
+<Callout type="warning">
+	broadcasting は便利ですが、意図しない形で計算が通ってしまうこともあります。 計算前後で `shape`
+	を確認する癖をつけると、バグに早く気づけます。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 次のステップ
+
+次は、表形式データを扱う **pandas** の基礎（読み込み・選択・フィルタ）に進みます。

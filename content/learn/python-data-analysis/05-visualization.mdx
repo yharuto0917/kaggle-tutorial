@@ -1,0 +1,77 @@
+---
+title: データ可視化 — matplotlib / seaborn
+description: 分布・相関・カテゴリ別の傾向を、matplotlib と seaborn で可視化する基本を学びます。
+---
+
+## なぜ可視化するか
+
+数値の要約だけでは見落とす「分布の偏り・外れ値・関係性」を、
+グラフは一目で教えてくれます。可視化は [[EDA]] の中心的な道具です。
+
+- **matplotlib**：描画の土台。細かい調整ができる
+- **seaborn**：matplotlib の上位ラッパー。統計的なグラフを短く書ける
+
+```python
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+
+df = pd.read_csv("/kaggle/input/titanic/train.csv")
+sns.set_theme()   # 見やすい既定スタイル
+```
+
+## 分布を見る
+
+```python
+# ヒストグラム＋カーネル密度
+sns.histplot(data=df, x="Age", kde=True)
+plt.show()
+```
+
+数値特徴の**偏り（歪み）**や、ありえない値（外れ値）の有無を確認します。
+
+## カテゴリ別の傾向を見る
+
+目的変数（`Survived`）とカテゴリの関係を見るのが、テーブルコンペの定番です。
+
+```python
+# 客室クラス別の生存率
+sns.barplot(data=df, x="Pclass", y="Survived")
+plt.show()
+
+# 性別ごとの件数
+sns.countplot(data=df, x="Sex", hue="Survived")
+plt.show()
+```
+
+<Callout type="tip">
+	`hue` に目的変数を渡すと、カテゴリごとの内訳を色分けで比較できます。
+	「どの特徴が目的変数と関係していそうか」の当たりをつけるのに有効です。
+</Callout>
+
+## 相関を見る
+
+数値特徴どうしの関係は散布図と相関ヒートマップで確認します。
+
+```python
+# 数値列の相関行列をヒートマップに
+num = df.select_dtypes("number")
+sns.heatmap(num.corr(numeric_only=True), annot=True, fmt=".2f", cmap="coolwarm")
+plt.show()
+```
+
+相関係数は $-1$ から $1$ の範囲で、絶対値が大きいほど線形の関連が強いことを表します。
+
+<Callout type="warning">
+	相関は「線形の関連」しか捉えません。相関が低くても非線形の関係が隠れていることがあり、
+	逆に相関が高くても因果があるとは限りません。グラフと数値の両方で判断しましょう。
+</Callout>
+
+<RunLinks
+	colab="https://colab.research.google.com/"
+	kaggle="https://www.kaggle.com/competitions/titanic"
+/>
+
+## 次のステップ
+
+次は、これらの道具を使って分析を進める **EDA の進め方**を体系的に学びます。

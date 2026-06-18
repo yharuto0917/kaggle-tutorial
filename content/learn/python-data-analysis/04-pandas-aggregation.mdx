@@ -1,0 +1,81 @@
+---
+title: pandas 基礎 II — groupby・結合・pivot・apply
+description: groupby による集計、merge/join での結合、pivot_table、apply/map による変換を学びます。
+---
+
+## groupby：カテゴリごとの集計
+
+`groupby` は「分割 → 集計 → 結合（split-apply-combine）」を一手で行います。
+カテゴリごとの傾向を見る EDA の主役です。
+
+```python
+import pandas as pd
+
+df = pd.read_csv("/kaggle/input/titanic/train.csv")
+
+# 客室クラスごとの生存率
+df.groupby("Pclass")["Survived"].mean()
+
+# 複数キー・複数集計
+df.groupby(["Pclass", "Sex"]).agg(
+    survival_rate=("Survived", "mean"),
+    count=("Survived", "size"),
+)
+```
+
+`agg` に「新しい列名=(対象列, 集計関数)」を渡すと、結果が読みやすくなります。
+
+## merge / join：表の結合
+
+複数のテーブルを共通キーで結合します。SQL の JOIN に相当します。
+
+```python
+# 乗客テーブルに、客室クラスごとの平均運賃を結合
+fare_by_class = (
+    df.groupby("Pclass")["Fare"].mean().rename("fare_mean").reset_index()
+)
+merged = df.merge(fare_by_class, on="Pclass", how="left")
+```
+
+`how` で結合方法を選びます。欠損を増やしたくない特徴量結合では `how="left"` が基本です。
+
+<Callout type="warning">
+	結合キーに重複があると行数が意図せず増えます（行の水増し）。 `merge` の前後で `shape`
+	を確認し、想定どおりの行数かをチェックしましょう。
+</Callout>
+
+## pivot_table：クロス集計
+
+行・列の 2 軸でクロス集計します。Excel のピボットテーブルと同じ発想です。
+
+```python
+df.pivot_table(
+    index="Pclass", columns="Sex", values="Survived", aggfunc="mean"
+)
+```
+
+## apply / map：要素・行ごとの変換
+
+ベクトル化で書けない複雑な変換は `apply`、値の置換は `map` を使います。
+
+```python
+# 敬称（Title）を名前から抽出
+df["Title"] = df["Name"].apply(lambda s: s.split(",")[1].split(".")[0].strip())
+
+# カテゴリを数値へ写像
+df["Sex_code"] = df["Sex"].map({"male": 0, "female": 1})
+```
+
+<Callout type="tip">
+	`apply` は行ごとに Python 関数を呼ぶため低速です。`map` の辞書置換や、 `df["a"] + df["b"]`
+	のような[ベクトル化](/learn/python-data-analysis/02-numpy)で書けないかを先に検討しましょう。
+</Callout>
+
+<RunLinks
+	colab="https://colab.research.google.com/"
+	kaggle="https://www.kaggle.com/competitions/titanic"
+/>
+
+## 次のステップ
+
+次は matplotlib / seaborn を使ったデータ可視化に進みます。

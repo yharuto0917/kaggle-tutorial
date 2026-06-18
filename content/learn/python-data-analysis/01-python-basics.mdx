@@ -1,0 +1,73 @@
+---
+title: ML 向け Python 最短復習と Notebook 操作
+description: 機械学習で頻出する Python 文法を最短で復習し、Kaggle Notebook の基本操作を押さえます。
+---
+
+## このトラックで学ぶこと
+
+このトラック（L1）では、機械学習に必要な
+**Python・NumPy・pandas・データ可視化・[[EDA]]** の基礎を、
+Kaggle の実データ（Titanic）を題材に手を動かしながら学びます。
+以降の全トラックの前提となる「データを触る土台」を固めるのが目的です。
+
+<Callout type="note">
+	Python の完全な入門は扱いません。「変数・if・for を書いたことがある」程度を前提に、
+	機械学習で実際に多用する書き方へ最短で橋渡しします。
+</Callout>
+
+## Notebook の基本操作
+
+Kaggle Notebook（や Google Colab）は **セル**単位でコードを実行します。
+
+- **Code セル**：Python を書いて `Shift + Enter` で実行。結果はセル直下に表示
+- **Markdown セル**：説明や見出しを書く（分析の意図を残すと再現しやすい）
+- セルは上から順に実行され、変数や import は後続セルへ引き継がれます
+
+```python
+# よく使うマジックコマンド
+%timeit sum(range(1000))   # 実行時間を計測
+!pip install japanize-matplotlib  # 先頭の ! でシェルコマンドを実行
+```
+
+## ML で頻出する Python 文法
+
+データ処理では、簡潔に書けるイディオムが役立ちます。
+
+```python
+# リスト内包表記：ループを 1 行で
+squares = [x**2 for x in range(5)]          # [0, 1, 4, 9, 16]
+
+# 辞書：カラム名と型の対応など
+dtypes = {"age": "float", "name": "object"}
+
+# f-string：ログやスコア表示に便利
+score = 0.8123
+print(f"CV score: {score:.4f}")             # CV score: 0.8123
+
+# 関数：前処理をまとめて再利用する
+def add_features(df):
+    df["family_size"] = df["sibsp"] + df["parch"] + 1
+    return df
+```
+
+## 分析の定番 import
+
+ほぼすべての Notebook がこの 4 つから始まります。エイリアス（別名）は事実上の標準です。
+
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
+
+<Callout type="tip">
+	セルを小さく分け、こまめに実行して結果を確認する「対話的」な進め方が EDA の基本です。 1
+	セルに詰め込みすぎると、どこで何が起きたか追いにくくなります。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 次のステップ
+
+次は、数値計算の土台である **NumPy** の配列・ベクトル化・broadcasting を学びます。
