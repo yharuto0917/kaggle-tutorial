@@ -1,0 +1,52 @@
+---
+title: コンペの構造と提出の仕組み
+description: コンペページの各タブ、submission.csv の作り方、Public/Private リーダーボードの違いを理解します。
+---
+
+## コンペページのタブ
+
+各コンペは次のタブで構成されます。**最初に Overview と Data と Rules を必ず読む**のが鉄則です。
+
+| タブ            | 内容                                                      |
+| --------------- | --------------------------------------------------------- |
+| **Overview**    | 課題の背景・評価指標・賞金・スケジュール                  |
+| **Data**        | 配布データの説明（train / test / sample_submission など） |
+| **Code**        | 公開 Notebook                                             |
+| **Discussion**  | 議論・Q&A・解法共有                                       |
+| **Leaderboard** | 順位表（[[リーダーボード]]）                              |
+| **Rules**       | 参加規約（外部データ可否・チーム人数・提出回数上限など）  |
+
+## 提出ファイル（submission.csv）
+
+多くのコンペでは、`sample_submission.csv` と同じ形式の CSV を提出します。
+ID 列と予測列の 2 列構成が一般的です。
+
+```python
+import pandas as pd
+
+submission = pd.DataFrame({
+    "id": test["id"],
+    "target": predictions,
+})
+submission.to_csv("submission.csv", index=False)
+```
+
+Notebook から提出する場合は **Submit** ボタン、ファイルを直接上げる場合は
+コンペの **Submit Predictions** からアップロードします。
+
+## Public と Private リーダーボード
+
+- **Public LB**：テストデータの**一部**で算出され、コンペ中に見えるスコア
+- **Private LB**：**残り**で算出され、**最終順位を決める**スコア（終了まで非公開）
+
+Public に過剰適合すると、最終で順位が崩れる[[シェイクアップ]]が起きます。
+これを避けるため、手元の[[交差検証]]を信頼し、[[過学習]]を抑えることが重要です。
+
+<Callout type="tip">
+	最終提出には通常 2 つの submission を選べます。「Public が最高のもの」と 「CV
+	を信頼した手堅いもの」を選ぶ、という戦略がよく使われます。
+</Callout>
+
+## 次のステップ
+
+次は、Kaggle の評価制度（メダルと称号）と 4 つのカテゴリを見ます。

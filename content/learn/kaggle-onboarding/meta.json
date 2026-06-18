@@ -1,0 +1,14 @@
+{
+	"title": "Kaggle オンボーディング",
+	"description": "Kaggle の基本とプラットフォームの使い方、コンペの取り組み方を学ぶ入門トラック",
+	"pages": [
+		"01-what-is-kaggle",
+		"02-account-setup",
+		"03-platform-tour",
+		"04-notebooks",
+		"05-competition-structure",
+		"06-medals-and-tiers",
+		"07-kaggle-api",
+		"08-local-vs-cloud"
+	]
+}
