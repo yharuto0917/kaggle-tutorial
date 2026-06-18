@@ -1,0 +1,70 @@
+---
+title: テキスト/カテゴリの高度特徴量
+description: テキストの count / TF-IDF の入口と、高カーディナリティなカテゴリの扱い方を学びます。
+---
+
+## テキストを数値化する
+
+テキスト列は、単語の出現を数えてベクトル化するのが基本です。
+
+- **Count（BoW）**：各単語の出現回数を特徴にする
+- **TF-IDF**：頻出しすぎる語を抑え、その文書に特徴的な語を重視する
+
+```python
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+tfidf = TfidfVectorizer(max_features=2000, ngram_range=(1, 2))
+X_text = tfidf.fit_transform(df["text"])   # 疎行列
+```
+
+<Callout type="warning">
+	`TfidfVectorizer` の `fit` は**訓練データだけ**に行い、検証/テストには `transform` を適用します。
+	全体で fit すると語彙や IDF に検証側の情報が混ざり[[データリーク]]になります。
+</Callout>
+
+## 文字列からの軽量特徴
+
+ベクトル化の前に、長さや単語数などの単純な特徴も効くことがあります。
+
+```python
+df["text_len"] = df["text"].str.len()
+df["word_count"] = df["text"].str.split().str.len()
+```
+
+## 高カーディナリティなカテゴリ
+
+水準が非常に多い[[カテゴリ変数]]（ユーザー ID・商品 ID など）は、One-Hot だと列が爆発します。
+
+- **Frequency エンコーディング**：出現頻度に置き換える
+- **[[ターゲットエンコーディング]]**：fold 内で目的変数平均を使う（リーク注意）
+- **頻度の低い水準をまとめる**：「その他」に集約してノイズを減らす
+
+```python
+# 出現頻度が低い水準を "rare" に集約
+counts = df["category"].value_counts()
+rare = counts[counts < 10].index
+df["category"] = df["category"].where(~df["category"].isin(rare), "rare")
+```
+
+<Callout type="tip">
+	TF-IDF などは大量の疎な列を生みます。線形モデルや LightGBM は疎行列を扱えますが、
+	次元削減（次元削減・[[主成分分析（PCA）]] や TruncatedSVD）で圧縮することもあります。
+</Callout>
+
+## 理解度チェック
+
+<Quiz
+	id="l4-05"
+	question="TfidfVectorizer を使うときの正しい手順は？"
+	options={[
+		"train+test をまとめて fit_transform する",
+		"train で fit し、valid/test には transform だけを適用する",
+		"test で fit して train に transform する",
+	]}
+	answer={1}
+	explanation="語彙や IDF は訓練データだけから学習（fit）し、検証/テストへは transform を適用します。全体で fit するとリークします。"
+/>
+
+## 次のステップ
+
+次は、作った特徴量から効くものを選ぶ「特徴量選択」を学びます。
