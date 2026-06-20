@@ -29,6 +29,17 @@
 			"service": "kaggle-tutorial",
 		},
 	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "kaggle_tutorial_db",
+			// TODO: `wrangler d1 create kaggle_tutorial_db` の出力 ID に置き換える。
+			//       ローカルマイグレーション（--local）はこのプレースホルダのままでも動作する。
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			// drizzle-kit の out と一致させる（生成 SQL を wrangler で適用）。
+			"migrations_dir": "drizzle",
+		},
+	],
 	"observability": {
 		"enabled": true,
 	},

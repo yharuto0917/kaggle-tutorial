@@ -27,6 +27,7 @@
 	},
 	"dependencies": {
 		"@opennextjs/cloudflare": "^1.19.9",
+		"drizzle-orm": "^0.45.2",
 		"fumadocs-core": "^16.10.2",
 		"fumadocs-mdx": "^15.0.12",
 		"katex": "^0.17.0",
@@ -45,6 +46,7 @@
 		"@types/node": "^20.19.43",
 		"@types/react": "^19.1.7",
 		"@types/react-dom": "^19.1.7",
+		"drizzle-kit": "^0.31.10",
 		"eslint": "^9",
 		"eslint-config-next": "16.2.6",
 		"jsdom": "^29.1.1",
