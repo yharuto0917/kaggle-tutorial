@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "76d9ad55-21b5-49c7-8124-23a7988d9156",
+  "id": "8e66fadf-ff22-46ab-b129-4221943d26d7",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "lesson_progress": {
@@ -54,10 +54,10 @@
         }
       },
       "foreignKeys": {
-        "lesson_progress_user_id_users_id_fk": {
-          "name": "lesson_progress_user_id_users_id_fk",
+        "lesson_progress_user_id_user_id_fk": {
+          "name": "lesson_progress_user_id_user_id_fk",
           "tableFrom": "lesson_progress",
-          "tableTo": "users",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
@@ -129,10 +129,10 @@
         }
       },
       "foreignKeys": {
-        "quiz_results_user_id_users_id_fk": {
-          "name": "quiz_results_user_id_users_id_fk",
+        "quiz_results_user_id_user_id_fk": {
+          "name": "quiz_results_user_id_user_id_fk",
           "tableFrom": "quiz_results",
-          "tableTo": "users",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
@@ -147,13 +147,20 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "users": {
-      "name": "users",
+    "user": {
+      "name": "user",
       "columns": {
         "id": {
           "name": "id",
           "type": "text",
           "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
@@ -164,8 +171,16 @@
           "notNull": true,
           "autoincrement": false
         },
-        "name": {
-          "name": "name",
+        "email_verified": {
+          "name": "email_verified",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "image": {
+          "name": "image",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -177,11 +192,18 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         }
       },
       "indexes": {
-        "users_email_unique": {
-          "name": "users_email_unique",
+        "user_email_unique": {
+          "name": "user_email_unique",
           "columns": [
             "email"
           ],
