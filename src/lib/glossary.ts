@@ -304,6 +304,13 @@ export const glossary: GlossaryEntry[] = [
 		aliases: ["深層学習", "deep learning", "DL"],
 		definition: "多層のニューラルネットで表現を自動獲得する手法。画像・自然言語などに強い。",
 	},
+	{
+		slug: "transfer-learning",
+		term: "転移学習",
+		aliases: ["transfer learning", "ファインチューニング", "fine-tuning"],
+		definition:
+			"大規模データで事前学習済みのモデルを、手元のタスクに合わせて再利用・微調整する手法。少ないデータでも高精度を狙える。",
+	},
 
 	// --- アンサンブル ---
 	{

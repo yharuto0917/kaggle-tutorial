@@ -1,0 +1,61 @@
+---
+title: NLP I — テキスト前処理と古典手法
+description: テキストの前処理と、BoW / TF-IDF による特徴量化＋線形モデルの強いベースラインを学びます。
+---
+
+## まず軽い手法でベースライン
+
+NLP コンペでも、いきなり大型モデルではなく、**TF-IDF + 線形モデル**で
+強いベースラインを作るのが定石です。速く、安定し、アンサンブルの素材にもなります。
+
+## テキスト前処理
+
+- 小文字化・記号や空白の正規化
+- （言語により）トークン化。日本語は分かち書きが必要
+- 不要語の除去はタスク次第（過度な除去は情報を落とす）
+
+## BoW / TF-IDF
+
+- **BoW（Bag of Words）**：単語の出現回数を特徴にする
+- **TF-IDF**：頻出しすぎる語を抑え、その文書に特徴的な語を重視する
+
+```python
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+
+tfidf = TfidfVectorizer(max_features=50000, ngram_range=(1, 2))
+X = tfidf.fit_transform(train_text)        # 訓練データだけで fit
+X_test = tfidf.transform(test_text)        # テストは transform のみ
+
+model = LogisticRegression(max_iter=1000).fit(X, y)
+```
+
+<Callout type="warning">
+	`fit` は**訓練データだけ**に行い、検証/テストには `transform` を適用します。全体で fit すると
+	語彙や IDF に検証側の情報が混ざり[[データリーク]]になります（[[交差検証]]の fold 内でも同様）。
+</Callout>
+
+<Callout type="tip">
+	TF-IDF は大量の疎な特徴を生みます。ロジスティック回帰や線形 SVM、LightGBM が相性良く、
+	次レッスンの Transformer 系と**アンサンブル**すると多様性が出ます。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 理解度チェック
+
+<Quiz
+	id="l7-06"
+	question="TfidfVectorizer を使うときの正しい手順は？"
+	options={[
+		"train+test をまとめて fit_transform する",
+		"train で fit し、valid/test には transform だけを適用する",
+		"test で fit して train に適用する",
+	]}
+	answer={1}
+	explanation="語彙と IDF は訓練データだけから学習（fit）し、検証/テストへは transform を適用します。全体 fit はリークです。"
+/>
+
+## 次のステップ
+
+次は Transformer / BERT と Hugging Face によるファインチューニングを学びます。
