@@ -1,13 +1,12 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { getDb } from "@/db";
 import { lessonProgress } from "@/db/schema";
-import { ensureUser, getUserId } from "../context";
+import { type AppEnv, ensureUser, getUserId } from "../context";
 
 /** レッスン進捗 API。GET で一覧、POST で 1 件 upsert。 */
-export const progressRoute = new Hono()
+export const progressRoute = new Hono<AppEnv>()
 	.get("/", async (c) => {
-		const db = getDb();
+		const db = c.get("db");
 		const rows = await db
 			.select()
 			.from(lessonProgress)
@@ -20,16 +19,16 @@ export const progressRoute = new Hono()
 			status?: unknown;
 		} | null;
 
-		const lessonId = body?.lessonId;
+		const lessonId = typeof body?.lessonId === "string" ? body.lessonId.trim() : "";
 		const status = body?.status;
-		if (typeof lessonId !== "string" || lessonId.length === 0) {
+		if (lessonId.length === 0) {
 			return c.json({ error: "lessonId（文字列）が必要です" }, 400);
 		}
 		if (status !== "in-progress" && status !== "completed") {
 			return c.json({ error: "status は in-progress または completed を指定してください" }, 400);
 		}
 
-		const db = getDb();
+		const db = c.get("db");
 		const userId = getUserId(c);
 		await ensureUser(db, userId);
 
