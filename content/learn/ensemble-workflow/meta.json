@@ -1,0 +1,14 @@
+{
+	"title": "アンサンブル & コンペワークフロー",
+	"description": "アンサンブル（平均・blending・stacking）と、shake-up を避けるコンペ運用・戦略を学ぶトラック",
+	"pages": [
+		"01-ensemble-theory",
+		"02-averaging-blending",
+		"03-stacking",
+		"04-multilevel-stacking",
+		"05-experiment-management",
+		"06-competition-strategy",
+		"07-shakeup-submission",
+		"08-discussion-notebooks"
+	]
+}
