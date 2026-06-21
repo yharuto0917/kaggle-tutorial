@@ -5,6 +5,7 @@
 		"ml-basics",
 		"intro-competitions",
 		"feature-engineering",
-		"gradient-boosting"
+		"gradient-boosting",
+		"ensemble-workflow"
 	]
 }
