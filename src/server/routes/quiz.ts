@@ -1,19 +1,21 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { quizResults } from "@/db/schema";
-import { type AppEnv, ensureUser, getUserId } from "../context";
+import type { AppEnv } from "../context";
 
-/** クイズ結果 API。GET で一覧、POST で 1 件 upsert。 */
+/** クイズ結果 API。要ログイン。GET で一覧、POST で 1 件 upsert。 */
 export const quizRoute = new Hono<AppEnv>()
 	.get("/", async (c) => {
+		const userId = c.get("userId");
+		if (!userId) return c.json({ error: "認証が必要です" }, 401);
 		const db = c.get("db");
-		const rows = await db
-			.select()
-			.from(quizResults)
-			.where(eq(quizResults.userId, getUserId(c)));
+		const rows = await db.select().from(quizResults).where(eq(quizResults.userId, userId));
 		return c.json(rows);
 	})
 	.post("/", async (c) => {
+		const userId = c.get("userId");
+		if (!userId) return c.json({ error: "認証が必要です" }, 401);
+
 		const body = (await c.req.json().catch(() => null)) as {
 			quizId?: unknown;
 			correct?: unknown;
@@ -38,9 +40,6 @@ export const quizRoute = new Hono<AppEnv>()
 		}
 
 		const db = c.get("db");
-		const userId = getUserId(c);
-		await ensureUser(db, userId);
-
 		const answeredAt =
 			typeof body?.answeredAt === "number" && Number.isFinite(body.answeredAt)
 				? new Date(body.answeredAt)
