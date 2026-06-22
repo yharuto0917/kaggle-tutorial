@@ -1,0 +1,15 @@
+{
+	"title": "上級テクニック & グランドマスターへの道",
+	"description": "target encoding・adversarial validation・後処理などの上級手法と、運用・チーム戦略・称号獲得を学ぶトラック",
+	"pages": [
+		"01-target-encoding",
+		"02-adversarial-validation",
+		"03-pseudo-labeling",
+		"04-post-processing",
+		"05-leakage-external-data",
+		"06-big-data-memory",
+		"07-team-strategy",
+		"08-domain-tips",
+		"09-grandmaster-roadmap"
+	]
+}
