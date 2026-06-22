@@ -1,0 +1,66 @@
+---
+title: NLP テキスト分類コンペ実践
+description: TF-IDF ベースラインから BERT ファインチューニング、アンサンブルまで NLP コンペの流れを学びます。
+---
+
+## 概要
+
+テキスト分類コンペでは、**軽い古典手法で強いベースライン**を作ってから、
+**Transformer/BERT のファインチューニング**へ進むのが定石です。L7（NLP）の実践編です。
+
+## 1. EDA とベースライン（TF-IDF + 線形）
+
+```python
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+
+df = pd.read_csv("/kaggle/input/<competition>/train.csv")  # text, label
+tfidf = TfidfVectorizer(max_features=50000, ngram_range=(1, 2))
+X = tfidf.fit_transform(df["text"])          # 訓練だけで fit
+model = LogisticRegression(max_iter=1000).fit(X, df["label"])
+```
+
+まず TF-IDF + ロジスティック回帰で速い基準を作り、[[交差検証]]で評価します。
+
+<Callout type="warning">
+	`TfidfVectorizer` の `fit` は**訓練データだけ**に行い、検証/テストへは `transform`。 全体で fit
+	すると語彙・IDF に検証側が混ざり[[データリーク]]になります。
+</Callout>
+
+## 2. BERT のファインチューニング（Hugging Face）
+
+```python
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
+name = "bert-base-uncased"
+tok = AutoTokenizer.from_pretrained(name)
+model = AutoModelForSequenceClassification.from_pretrained(name, num_labels=n_classes)
+enc = tok(texts, padding=True, truncation=True, max_length=256, return_tensors="pt")
+# 小さい学習率(例 2e-5)・短いエポック・検証で早期終了
+```
+
+事前学習済み BERT を各タスクに[[転移学習]]します（L7-07）。GPU メモリに応じて
+`max_length` と[[バッチサイズ]]を調整します。
+
+## 3. アンサンブル
+
+```python
+# 誤りの相関が低い TF-IDF線形 と BERT を加重平均
+pred = 0.3 * pred_tfidf + 0.7 * pred_bert
+```
+
+性質の異なる古典手法と BERT を [[ブレンディング]] すると、多様性が出て安定します（L6）。
+
+<Callout type="note">
+	事前学習モデル・外部データには**ライセンスとコンペ規約**があります。利用可否を必ず確認しましょう
+	（L6 / L8 の倫理・規約も参照）。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 関連トラック
+
+- [L7-06 NLP I：前処理〜古典手法](/learn/deep-learning/06-nlp-classic)
+- [L7-07 NLP II：Transformer/BERT/Hugging Face](/learn/deep-learning/07-transformers)
+- [L6 アンサンブル & コンペワークフロー](/learn/ensemble-workflow/01-ensemble-theory)
