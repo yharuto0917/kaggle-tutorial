@@ -1,0 +1,65 @@
+---
+title: 画像分類コンペ実践
+description: 転移学習・データ拡張・TTA・fold アンサンブルで画像分類コンペに取り組む流れを学びます。
+---
+
+## 概要
+
+画像分類コンペでは、ImageNet 等で事前学習済みのモデルを使う **[[転移学習]]** が標準です。
+ゼロから学習するより少データ・短時間で高精度を狙えます。L7（CV）の実践編です。
+
+<Callout type="note">
+	画像コンペは GPU が前提です。デバッグは少枚数・小解像度で行い、本学習だけ GPU を有効化して
+	クォータを節約します（L7-09 参照）。
+</Callout>
+
+## 1. データ確認
+
+```python
+import pandas as pd
+df = pd.read_csv("/kaggle/input/<competition>/train.csv")  # image_id, label
+df["label"].value_counts()   # クラス分布（不均衡を確認）
+```
+
+クラスの偏り・画像サイズ・破損画像を確認し、層化した [[交差検証]] を設計します。
+
+## 2. 事前学習モデルのファインチューニング
+
+```python
+import timm, torch.nn as nn
+
+model = timm.create_model("tf_efficientnet_b0", pretrained=True, num_classes=n_classes)
+# 通常の PyTorch 学習ループ（AdamW + 小さめ学習率 + 早期終了）
+```
+
+事前学習時より**小さい[[学習率]]**で微調整し、検証で[[早期終了]]します。
+
+## 3. データ拡張と TTA
+
+```python
+# 学習: 反転・回転・切り抜き・色変換などで水増し（過学習抑制）
+# 推論: TTA（複数の拡張版を予測して平均）でスコア底上げ
+```
+
+[[データ拡張]] は画像コンペの効きどころです。正規化の統計量は学習・検証で必ずそろえます。
+
+## 4. fold アンサンブル
+
+各 fold のモデルでテストを予測し、平均します。さらに別アーキテクチャを混ぜると多様性が出ます。
+
+```python
+test_pred = sum(fold_models[k].predict(test) for k in range(5)) / 5
+```
+
+<Callout type="warning">
+	検証時の前処理・正規化を推論と一致させること。ここがずれると [[交差検証]] が当てにならず、
+	[[過学習]]や[[シェイクアップ]]の原因になります。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 関連トラック
+
+- [L7-04 CV I：CNN 基礎](/learn/deep-learning/04-cnn-basics)
+- [L7-05 CV II：転移学習・ファインチューニング](/learn/deep-learning/05-transfer-learning)
+- [L7-09 GPU/TPU・メモリ最適化](/learn/deep-learning/09-gpu-optimization)

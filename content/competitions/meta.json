@@ -1,3 +1,9 @@
 {
-	"pages": ["titanic", "house-prices"]
+	"pages": [
+		"titanic",
+		"house-prices",
+		"playground-series",
+		"image-classification",
+		"nlp-text-classification"
+	]
 }

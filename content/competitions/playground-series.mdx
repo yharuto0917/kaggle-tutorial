@@ -1,0 +1,74 @@
+---
+title: Playground Series — 表形式コンペ実践
+description: 毎月開催の表形式コンペ Playground Series を題材に、CV 構築から特徴量・アンサンブルまでを通します。
+---
+
+## 概要
+
+[Playground Series](https://www.kaggle.com/competitions?hostSegmentIdFilter=8) は、Kaggle が
+毎月開催する**表形式の練習コンペ**です。実データに近い（合成された）データで、評価指標は回によって
+AUC・RMSE などさまざま。入門（Titanic / House Prices）の次に、L4〜L6 の手法を統合的に試すのに最適です。
+
+<Callout type="note">
+	まず Overview
+	と評価指標を確認します。指標に合わせて検証（[[交差検証]]）と後処理を設計するのが第一歩です。
+</Callout>
+
+## 1. EDA と検証設計
+
+```python
+import pandas as pd
+
+train = pd.read_csv("/kaggle/input/<competition>/train.csv")
+test = pd.read_csv("/kaggle/input/<competition>/test.csv")
+train.shape, train["target"].value_counts(normalize=True)
+```
+
+目的変数の偏り・欠損・型を確認し、データ構造に合った分割（不均衡なら層化）で
+**信頼できる [[交差検証]]** を組みます。これが以降のすべての判断の土台です。
+
+## 2. ベースライン（LightGBM + CV）
+
+```python
+import numpy as np
+import lightgbm as lgb
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import roc_auc_score
+
+X = train.drop(columns=["id", "target"]); y = train["target"]
+oof = np.zeros(len(X))
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+for tr, va in skf.split(X, y):
+    model = lgb.LGBMClassifier(n_estimators=2000, learning_rate=0.03)
+    model.fit(X.iloc[tr], y.iloc[tr],
+              eval_set=[(X.iloc[va], y.iloc[va])],
+              callbacks=[lgb.early_stopping(100), lgb.log_evaluation(0)])
+    oof[va] = model.predict_proba(X.iloc[va])[:, 1]
+print("CV AUC:", roc_auc_score(y, oof))
+```
+
+[[勾配ブースティング（GBDT）]] と [[早期終了]] で素早く強いベースラインを作ります（L5）。
+
+## 3. 改善
+
+- 特徴量を一つずつ足して CV で確認（[[特徴量エンジニアリング]]、L4）
+- 高カーディナリティは fold 内 [[ターゲットエンコーディング]]（リーク注意）
+- ハイパラは Optuna で探索（L5）
+
+## 4. アンサンブル
+
+```python
+# 系統の違うモデルの OOF を加重平均（重みは OOF で最適化）
+blend = 0.5 * oof_lgbm + 0.3 * oof_xgb + 0.2 * oof_linear
+```
+
+LightGBM / XGBoost / 線形など多様なモデルを [[ブレンディング]] / [[スタッキング]] で統合します（L6）。
+**重みは OOF で決め**、Public LB に合わせ込まない（[[シェイクアップ]]回避）。
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 関連トラック
+
+- [L4 特徴量エンジニアリング & 検証戦略](/learn/feature-engineering/01-overview)
+- [L5 勾配ブースティング & ハイパラ最適化](/learn/gradient-boosting/01-trees-to-ensembles)
+- [L6 アンサンブル & コンペワークフロー](/learn/ensemble-workflow/01-ensemble-theory)
