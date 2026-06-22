@@ -1,19 +1,21 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { lessonProgress } from "@/db/schema";
-import { type AppEnv, ensureUser, getUserId } from "../context";
+import type { AppEnv } from "../context";
 
-/** レッスン進捗 API。GET で一覧、POST で 1 件 upsert。 */
+/** レッスン進捗 API。要ログイン。GET で一覧、POST で 1 件 upsert。 */
 export const progressRoute = new Hono<AppEnv>()
 	.get("/", async (c) => {
+		const userId = c.get("userId");
+		if (!userId) return c.json({ error: "認証が必要です" }, 401);
 		const db = c.get("db");
-		const rows = await db
-			.select()
-			.from(lessonProgress)
-			.where(eq(lessonProgress.userId, getUserId(c)));
+		const rows = await db.select().from(lessonProgress).where(eq(lessonProgress.userId, userId));
 		return c.json(rows);
 	})
 	.post("/", async (c) => {
+		const userId = c.get("userId");
+		if (!userId) return c.json({ error: "認証が必要です" }, 401);
+
 		const body = (await c.req.json().catch(() => null)) as {
 			lessonId?: unknown;
 			status?: unknown;
@@ -29,9 +31,6 @@ export const progressRoute = new Hono<AppEnv>()
 		}
 
 		const db = c.get("db");
-		const userId = getUserId(c);
-		await ensureUser(db, userId);
-
 		const now = new Date();
 		const [row] = await db
 			.insert(lessonProgress)
