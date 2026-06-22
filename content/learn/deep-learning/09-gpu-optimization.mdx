@@ -1,0 +1,69 @@
+---
+title: GPU/TPU 活用・混合精度・メモリ最適化
+description: Kaggle 環境で DL を現実的に回すための GPU/TPU 活用、混合精度、メモリ節約の実務を学びます。
+---
+
+## Kaggle の計算環境を使い切る
+
+Kaggle Notebook は無料で GPU/TPU を使えますが、**週あたりのクォータ**とセッション時間に上限があります。
+デバッグは CPU/少データで行い、本学習のときだけアクセラレータを有効化するのが鉄則です。
+
+```python
+import torch
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model = model.to(device)
+# 学習ループ内: xb, yb = xb.to(device), yb.to(device)
+```
+
+## 混合精度（AMP）
+
+float16/bf16 を併用する**混合精度**は、学習を高速化しメモリも節約します。
+
+```python
+scaler = torch.cuda.amp.GradScaler()
+for xb, yb in loader:
+    optimizer.zero_grad()
+    with torch.cuda.amp.autocast():
+        loss = loss_fn(model(xb), yb)
+    scaler.scale(loss).backward()
+    scaler.step(optimizer)
+    scaler.update()
+```
+
+## メモリ最適化のコツ
+
+- **バッチサイズ調整**：OOM（メモリ不足）なら[[バッチサイズ]]を下げる
+- **勾配累積**：小さいバッチを複数回ためてから更新し、実効バッチサイズを稼ぐ
+- **`torch.no_grad()` / `model.eval()`**：推論時は勾配を持たずメモリを節約
+- **不要テンソルの解放**：ループ内で `del` + `torch.cuda.empty_cache()`、`loss.item()` で値だけ保持
+
+<Callout type="warning">
+	GPU クォータは貴重です。ハイパラ探索や試行錯誤は小さなサブセット/エポックで回し、
+	良い構成が定まってから全データで本学習しましょう。再現のため[[乱数シード]]も固定します。
+</Callout>
+
+## 理解度チェック
+
+<Quiz
+	id="l7-09"
+	question="GPU メモリ不足（OOM）になったとき、まず試すべき対処は？"
+	options={[
+		"学習率を上げる",
+		"バッチサイズを下げる（必要なら勾配累積で実効バッチを稼ぐ）",
+		"エポック数を増やす",
+	]}
+	answer={1}
+	explanation="OOM はまずバッチサイズを下げます。実効バッチを保ちたい場合は勾配累積を併用し、混合精度でメモリを節約します。"
+/>
+
+## このトラックのまとめ
+
+- DL は順伝播→損失→逆伝播→最適化の反復。過学習対策（Dropout・weight decay・早期終了・拡張）が要
+- PyTorch は Tensor・autograd・Dataset/DataLoader・自前の学習ループ
+- 画像/テキストは**転移学習**が主流。表形式は GBDT が基本で DL は多様性要員
+- 時系列はリークに注意し[[時系列分割]]で検証。GPU は混合精度・メモリ最適化で現実的に回す
+
+## 次のステップ
+
+次トラック（L8）では、上級テクニックとグランドマスターへの道を学びます。

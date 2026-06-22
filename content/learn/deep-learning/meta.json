@@ -1,0 +1,15 @@
+{
+	"title": "ディープラーニング実践",
+	"description": "PyTorch を軸に、表形式 DL・CV・NLP・時系列と GPU 実務までを学ぶトラック",
+	"pages": [
+		"01-neural-network-basics",
+		"02-pytorch-intro",
+		"03-tabular-dl",
+		"04-cnn-basics",
+		"05-transfer-learning",
+		"06-nlp-classic",
+		"07-transformers",
+		"08-time-series",
+		"09-gpu-optimization"
+	]
+}

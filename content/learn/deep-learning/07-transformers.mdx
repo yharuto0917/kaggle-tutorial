@@ -1,0 +1,64 @@
+---
+title: NLP II — Transformer / BERT・Hugging Face
+description: Transformer と BERT の考え方、Hugging Face でのファインチューニング、LLM 活用の概観を学びます。
+---
+
+## Transformer と BERT
+
+**Transformer** は自己注意（self-attention）で文中の語の関係を捉えるアーキテクチャです。
+**BERT** は大量テキストで事前学習された Transformer で、これを各タスクに
+**[[転移学習]]（ファインチューニング）**して使うのが NLP の主流です。
+
+## Hugging Face でファインチューニング
+
+`transformers` ライブラリで、事前学習済みモデルとトークナイザを簡単に呼べます。
+
+```python
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
+name = "bert-base-uncased"
+tokenizer = AutoTokenizer.from_pretrained(name)
+model = AutoModelForSequenceClassification.from_pretrained(name, num_labels=2)
+
+enc = tokenizer(texts, padding=True, truncation=True, max_length=256, return_tensors="pt")
+# あとは通常の PyTorch 学習ループ、または Trainer で学習
+```
+
+ファインチューニングでは小さめの[[学習率]]（例 2e-5）と短い[[エポック]]、
+検証での[[早期終了]]が定番です。GPU メモリに応じて[[バッチサイズ]]や `max_length` を調整します。
+
+## LLM 活用の概観
+
+近年は大規模言語モデル（LLM）を、ゼロショット/few-shot 推論や埋め込み生成、
+データ拡張（擬似データ生成）に使うアプローチも増えています。ただしコンペでは
+**規約（外部データ・モデルの利用可否）**を必ず確認します。
+
+<Callout type="warning">
+	事前学習モデルやデータには**ライセンス**と**コンペ規約**があります。利用可否・商用条件・
+	外部データ規約を確認してから使いましょう（L6 の引用・倫理も参照）。
+</Callout>
+
+<Callout type="tip">
+	BERT 系は強力ですが学習コストが高めです。**TF-IDF + 線形（前レッスン）とアンサンブル**すると、
+	誤りの相関が低く伸びやすい組み合わせになります。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 理解度チェック
+
+<Quiz
+	id="l7-07"
+	question="BERT を使った NLP タスクの一般的な進め方は？"
+	options={[
+		"BERT をゼロから自前データだけで学習する",
+		"事前学習済み BERT を各タスクにファインチューニング（転移学習）する",
+		"BERT は分類には使えない",
+	]}
+	answer={1}
+	explanation="大量テキストで事前学習済みの BERT を、手元タスクにファインチューニングするのが主流です。小さい学習率と早期終了が定番です。"
+/>
+
+## 次のステップ
+
+次は時系列予測の考え方と、検証でのリーク回避を学びます。
