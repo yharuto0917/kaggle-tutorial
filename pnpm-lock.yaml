@@ -11,6 +11,9 @@ importers:
       '@opennextjs/cloudflare':
         specifier: ^1.19.9
         version: 1.19.11(next@16.2.6(@babel/core@7.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(wrangler@4.100.0)
+      '@orama/orama':
+        specifier: ^3.1.18
+        version: 3.1.18
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2
