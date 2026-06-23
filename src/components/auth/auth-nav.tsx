@@ -23,6 +23,12 @@ export function AuthNav() {
 
 	return (
 		<div className="flex items-center gap-3">
+			<Link
+				href="/dashboard"
+				className="text-foreground/70 transition-colors hover:text-foreground"
+			>
+				ダッシュボード
+			</Link>
 			<span className="hidden text-foreground/60 sm:inline">{session.user.name}</span>
 			<button
 				type="button"
