@@ -42,6 +42,25 @@ function getAll(): Record<string, QuizResult> {
 	return cachedParsed;
 }
 
+/** クイズ ID → 結果 のマップ。 */
+export type QuizResultMap = Record<string, QuizResult>;
+
+/** 保存済みのクイズ結果を全件取得する（同期層 #25 用）。 */
+export function getAllQuizResults(): QuizResultMap {
+	return getAll();
+}
+
+/** クイズ結果全体を置き換える（ログイン時の D1 ミラー用）。詳細なしで通知し書き戻しを防ぐ。 */
+export function replaceAllQuizResults(map: QuizResultMap): void {
+	if (typeof window === "undefined") return;
+	try {
+		window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+		window.dispatchEvent(new CustomEvent(QUIZ_RESULT_EVENT));
+	} catch {
+		// localStorage 非対応・容量超過時は永続化を諦める。
+	}
+}
+
 function subscribe(onChange: () => void): () => void {
 	if (typeof window === "undefined") return () => {};
 	// 他タブからの storage 変更と、同一タブ内の保存（カスタムイベント）の両方を購読。

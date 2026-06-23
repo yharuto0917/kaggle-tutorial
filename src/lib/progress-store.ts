@@ -63,11 +63,14 @@ export function subscribeProgress(onChange: () => void): () => void {
 	};
 }
 
-function write(map: LessonProgressMap): void {
+/** 1 件変更時に同期層（#25）が拾うための詳細。一括置換時は付けない。 */
+export type LessonProgressChange = { lessonId: string; status: LessonStatus };
+
+function write(map: LessonProgressMap, detail?: LessonProgressChange): void {
 	if (typeof window === "undefined") return;
 	try {
 		window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
-		window.dispatchEvent(new CustomEvent(PROGRESS_EVENT));
+		window.dispatchEvent(new CustomEvent(PROGRESS_EVENT, detail ? { detail } : undefined));
 	} catch {
 		// localStorage 非対応・容量超過時は永続化を諦める。
 	}
@@ -82,7 +85,12 @@ export function setLessonStatus(lessonId: string, status: LessonStatus | null): 
 	} else {
 		next[lessonId] = { status, updatedAt: Date.now() };
 	}
-	write(next);
+	write(next, status === null ? undefined : { lessonId, status });
+}
+
+/** 進捗マップ全体を置き換える（ログイン時の D1 ミラー用）。詳細なしで通知し書き戻しを防ぐ。 */
+export function replaceLessonProgress(map: LessonProgressMap): void {
+	write(map);
 }
 
 /** 未記録のレッスンを「閲覧開始（in-progress）」にする。完了済みは変更しない（冪等）。 */
