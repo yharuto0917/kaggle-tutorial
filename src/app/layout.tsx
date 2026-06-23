@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
+import { ProgressSync } from "@/components/progress/progress-sync";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -36,6 +37,7 @@ export default function RootLayout({
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} flex min-h-screen flex-col antialiased`}
 			>
+				<ProgressSync />
 				<SiteHeader />
 				<div className="flex-1">{children}</div>
 				<SiteFooter />
