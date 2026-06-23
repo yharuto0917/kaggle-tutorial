@@ -9,14 +9,14 @@ import { quizRoute } from "@/server/routes/quiz";
 
 const db = drizzle(env.DB, { schema });
 
-// 本番 app.ts は Better Auth（getCloudflareContext / シークレット）に依存し workerd テストでは
-// 解決できないため、セッションをモックしたアプリを再構築してルートハンドラを検証する。
-// userId はテスト用ヘッダ x-test-user から注入する（本番は Better Auth セッションが設定）。
+// 本番 app.ts は Cookie ミドルウェア（getCloudflareContext 経由の getDb）を使うため、
+// テストではユーザー ID を直接注入したアプリを再構築してルートハンドラを検証する。
+// userId はテスト用ヘッダ x-test-user から注入する（本番は Cookie kt_uid が設定）。
 function makeApp() {
 	const app = new Hono<AppEnv>().basePath("/api");
 	app.use("*", async (c, next) => {
 		c.set("db", db);
-		c.set("userId", c.req.header("x-test-user") || null);
+		c.set("userId", c.req.header("x-test-user") || "test-user");
 		await next();
 	});
 	return app.route("/progress", progressRoute).route("/quiz", quizRoute);
@@ -30,66 +30,24 @@ function headers(userId?: string): Record<string, string> {
 	return h;
 }
 
-async function seedUser(id: string) {
-	const now = new Date();
-	await db
-		.insert(schema.user)
-		.values({
-			id,
-			name: id,
-			email: `${id}@example.com`,
-			emailVerified: false,
-			createdAt: now,
-			updatedAt: now,
-		})
-		.onConflictDoNothing();
-}
-
 beforeEach(async () => {
 	await db.delete(schema.lessonProgress);
 	await db.delete(schema.quizResults);
-	await db.delete(schema.session);
-	await db.delete(schema.account);
 	await db.delete(schema.user);
 });
 
-describe("API（workers / D1）", () => {
-	it("マイグレーションで自前 + Better Auth テーブルが作成され、tag-cache 名と衝突しない", async () => {
+describe("API（workers / D1・Cookie 識別）", () => {
+	it("アプリ用テーブルが存在し、撤去した認証テーブルは存在しない", async () => {
 		const res = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table'").all<{
 			name: string;
 		}>();
 		const names = res.results.map((r) => r.name);
-		for (const t of [
-			"user",
-			"lesson_progress",
-			"quiz_results",
-			"session",
-			"account",
-			"verification",
-		]) {
-			expect(names).toContain(t);
-		}
-		expect(names).not.toContain("revalidations");
+		for (const t of ["user", "lesson_progress", "quiz_results"]) expect(names).toContain(t);
+		for (const t of ["session", "account", "verification"]) expect(names).not.toContain(t);
 	});
 
-	describe("認証", () => {
-		it("未ログインの GET /api/progress は 401", async () => {
-			const res = await app.request("/api/progress", { headers: headers() });
-			expect(res.status).toBe(401);
-		});
-		it("未ログインの POST /api/quiz は 401", async () => {
-			const res = await app.request("/api/quiz", {
-				method: "POST",
-				headers: headers(),
-				body: JSON.stringify({ quizId: "q1", correct: true, selected: [0] }),
-			});
-			expect(res.status).toBe(401);
-		});
-	});
-
-	describe("/api/progress（要ログイン）", () => {
-		it("POST で作成し GET で取得できる", async () => {
-			await seedUser("u1");
+	describe("/api/progress", () => {
+		it("POST で作成（ユーザー行も自動作成）し GET で取得できる", async () => {
 			const post = await app.request("/api/progress", {
 				method: "POST",
 				headers: headers("u1"),
@@ -105,7 +63,6 @@ describe("API（workers / D1）", () => {
 		});
 
 		it("同一レッスンの再 POST は upsert で 1 行更新（重複しない）", async () => {
-			await seedUser("u1");
 			const body = { lessonId: "/learn/x", status: "in-progress" as const };
 			await app.request("/api/progress", {
 				method: "POST",
@@ -124,14 +81,12 @@ describe("API（workers / D1）", () => {
 			expect(rows[0].status).toBe("completed");
 		});
 
-		it("ユーザーごとに分離される", async () => {
-			await seedUser("alice");
+		it("ユーザー（Cookie）ごとに分離される", async () => {
 			await app.request("/api/progress", {
 				method: "POST",
 				headers: headers("alice"),
 				body: JSON.stringify({ lessonId: "/learn/x", status: "completed" }),
 			});
-			await seedUser("bob");
 			const bob = (await (
 				await app.request("/api/progress", { headers: headers("bob") })
 			).json()) as unknown[];
@@ -139,7 +94,6 @@ describe("API（workers / D1）", () => {
 		});
 
 		it("不正な body は 400", async () => {
-			await seedUser("u1");
 			const res = await app.request("/api/progress", {
 				method: "POST",
 				headers: headers("u1"),
@@ -149,9 +103,8 @@ describe("API（workers / D1）", () => {
 		});
 	});
 
-	describe("/api/quiz（要ログイン）", () => {
+	describe("/api/quiz", () => {
 		it("POST で作成し、selected が JSON 文字列で保存される", async () => {
-			await seedUser("u1");
 			const post = await app.request("/api/quiz", {
 				method: "POST",
 				headers: headers("u1"),
@@ -163,7 +116,6 @@ describe("API（workers / D1）", () => {
 		});
 
 		it("selected が数値配列でなければ 400", async () => {
-			await seedUser("u1");
 			const res = await app.request("/api/quiz", {
 				method: "POST",
 				headers: headers("u1"),

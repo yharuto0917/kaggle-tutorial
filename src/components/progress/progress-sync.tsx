@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import {
 	getAllQuizResults,
 	QUIZ_RESULT_EVENT,
 	replaceAllQuizResults,
 } from "@/hooks/use-quiz-result";
-import { authClient } from "@/lib/auth-client";
 import { getLessonProgressMap, PROGRESS_EVENT, replaceLessonProgress } from "@/lib/progress-store";
 import { mergeProgress, mergeQuiz, rowsToProgressMap, rowsToQuizMap } from "@/lib/progress-sync";
 
-// ベース URL は同一オリジン。Cookie（Better Auth セッション）は同一オリジンで送られる。
+// 同一オリジン。Cookie 識別（kt_uid）は自動送信される。
 const PROGRESS_URL = "/api/progress";
 const QUIZ_URL = "/api/quiz";
 
@@ -27,15 +26,15 @@ async function postJson(url: string, body: unknown): Promise<void> {
 }
 
 /**
- * ログイン時に localStorage の進捗/クイズを D1 とマージし（重複は完了優先）、
- * D1 へ差分を push してローカルを D1 のミラーにする。
+ * 初回マウント時に localStorage と D1 をマージ（重複は完了優先）し、D1 へ差分を push、
+ * ローカルを D1 のミラーにする。Cookie 識別なのでログイン操作は不要。
  */
-async function syncOnLogin(): Promise<void> {
+async function syncProgress(): Promise<void> {
 	let pRows: unknown;
 	let qRows: unknown;
 	try {
 		const [p, q] = await Promise.all([fetch(PROGRESS_URL), fetch(QUIZ_URL)]);
-		if (!p.ok || !q.ok) return; // 未認証・エラー時は何もしない
+		if (!p.ok || !q.ok) return;
 		pRows = await p.json();
 		qRows = await q.json();
 	} catch {
@@ -47,7 +46,6 @@ async function syncOnLogin(): Promise<void> {
 	const mergedP = mergeProgress(getLessonProgressMap(), remoteP);
 	const mergedQ = mergeQuiz(getAllQuizResults(), remoteQ);
 
-	// D1 に無い / 異なる項目だけ push（idempotent upsert）。
 	for (const [lessonId, v] of Object.entries(mergedP)) {
 		const r = remoteP[lessonId];
 		if (!r || r.status !== v.status) await postJson(PROGRESS_URL, { lessonId, status: v.status });
@@ -64,43 +62,32 @@ async function syncOnLogin(): Promise<void> {
 		}
 	}
 
-	// ローカルを D1 のミラーにする（詳細なし通知 → 書き戻しは発生しない）。
+	// ローカルを D1 のミラーにする（詳細なし通知 → write-through は反応しない）。
 	replaceLessonProgress(mergedP);
 	replaceAllQuizResults(mergedQ);
 }
 
 /**
- * 認証状態に応じて localStorage ↔ D1 を橋渡しする同期コンポーネント（UI なし）。
- * ルートレイアウトに 1 つだけ配置する。
- *
- * 注: `apiClient`（Hono RPC）の型共有はそのまま利用可能だが、本同期は入力型の都合で
- * `fetch` を用いている（`apiClient` は #23 で導入済み・他用途で利用）。
+ * localStorage ↔ D1 を橋渡しする同期コンポーネント（UI なし）。ルートレイアウトに 1 つ配置。
+ * マウント時に同期し、以降は単一変更を D1 へ write-through する。
  */
 export function ProgressSync() {
-	const { data: session } = authClient.useSession();
-	const userId = session?.user.id ?? null;
-	const loggedInRef = useRef(false);
-	const syncedFor = useRef<string | null>(null);
-
 	useEffect(() => {
-		loggedInRef.current = userId !== null;
-		if (!userId || syncedFor.current === userId) return;
-		syncedFor.current = userId;
-		void syncOnLogin();
-	}, [userId]);
+		void syncProgress();
+	}, []);
 
-	// ログイン中は単一の変更を D1 へ書き込む（write-through）。一括置換（detail なし）は無視。
+	// 単一の変更（detail 付き）を D1 へ書き込む。一括置換（detail なし）は無視。
 	useEffect(() => {
 		function onProgress(e: Event) {
 			const d = (e as CustomEvent).detail as { lessonId: string; status: string } | undefined;
-			if (!loggedInRef.current || !d) return;
+			if (!d) return;
 			void postJson(PROGRESS_URL, { lessonId: d.lessonId, status: d.status });
 		}
 		function onQuiz(e: Event) {
 			const d = (e as CustomEvent).detail as
 				| { id: string; correct: boolean; selected: number[]; answeredAt: number }
 				| undefined;
-			if (!loggedInRef.current || !d) return;
+			if (!d) return;
 			void postJson(QUIZ_URL, {
 				quizId: d.id,
 				correct: d.correct,

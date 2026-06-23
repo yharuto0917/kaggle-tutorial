@@ -1,8 +1,8 @@
-import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { Hono } from "hono";
+import { getCookie, setCookie } from "hono/cookie";
 import { getDb } from "@/db";
-import { createAuth } from "@/lib/auth";
-import { type AppEnv, resolveUserId } from "./context";
+import { newUserId, USER_COOKIE, USER_COOKIE_MAX_AGE } from "@/lib/session";
+import type { AppEnv } from "./context";
 import { progressRoute } from "./routes/progress";
 import { quizRoute } from "./routes/quiz";
 
@@ -12,18 +12,21 @@ import { quizRoute } from "./routes/quiz";
  */
 const app = new Hono<AppEnv>().basePath("/api");
 
-// Better Auth のエンドポイント（/api/auth/*）。セッション解決ミドルウェアより前に登録し、
-// 認証ハンドラ自身はそのミドルウェアを経由しないようにする。env はリクエスト時に解決する。
-app.on(["GET", "POST"], "/auth/*", (c) => {
-	const auth = createAuth(getCloudflareContext().env);
-	return auth.handler(c.req.raw);
-});
-
-// 以降のルート（progress / quiz）向け: db とログインユーザーをコンテキストへ載せる。
+// Cookie ベースの匿名識別。未発行なら UUID を発行して HTTP-only Cookie をセットし、
+// db とユーザー ID をリクエストコンテキストへ載せる。
 app.use("*", async (c, next) => {
-	const env = getCloudflareContext().env;
+	let uid = getCookie(c, USER_COOKIE);
+	if (!uid) {
+		uid = newUserId();
+		setCookie(c, USER_COOKIE, uid, {
+			httpOnly: true,
+			sameSite: "Lax",
+			path: "/",
+			maxAge: USER_COOKIE_MAX_AGE,
+		});
+	}
 	c.set("db", getDb());
-	c.set("userId", await resolveUserId(env, c.req.raw.headers));
+	c.set("userId", uid);
 	await next();
 });
 

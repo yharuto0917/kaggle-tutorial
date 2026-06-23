@@ -15,6 +15,13 @@
       "when": 1782127156575,
       "tag": "0001_spicy_norrin_radd",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1782228009164,
+      "tag": "0002_right_strong_guy",
+      "breakpoints": true
     }
   ]
 }

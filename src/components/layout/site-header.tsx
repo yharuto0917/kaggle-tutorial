@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { AuthNav } from "@/components/auth/auth-nav";
 
 /** 全ページ共通のグローバルヘッダー（sticky）。 */
 export function SiteHeader() {
@@ -29,6 +28,12 @@ export function SiteHeader() {
 						用語集
 					</Link>
 					<Link
+						href="/dashboard"
+						className="text-foreground/70 transition-colors hover:text-foreground"
+					>
+						進捗
+					</Link>
+					<Link
 						href="/search"
 						aria-label="サイト内検索"
 						className="flex items-center gap-1 text-foreground/70 transition-colors hover:text-foreground"
@@ -36,7 +41,6 @@ export function SiteHeader() {
 						<span aria-hidden>🔍</span>
 						<span>検索</span>
 					</Link>
-					<AuthNav />
 				</nav>
 			</div>
 		</header>

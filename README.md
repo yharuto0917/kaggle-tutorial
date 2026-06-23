@@ -35,50 +35,19 @@ pnpm dev
 | `pnpm deploy`       | Cloudflare へデプロイ                                              |
 | `pnpm typegen`      | Cloudflare Bindings の型定義生成                                   |
 
-## 認証（Better Auth）のセットアップ
+## 学習進捗の保存（Cookie ベース）
 
-ログイン（メール/パスワード・Google OAuth）には以下のシークレットが必要です。
-**シークレットはリポジトリにコミットしないでください。**
+ログイン不要・**外部認証やシークレットは不要**です。初回アクセス時にサーバが
+HTTP-only Cookie `kt_uid`（UUID）を発行し、それをユーザー ID として D1 に進捗/クイズを
+保存します。`/dashboard` で集計を確認できます。
 
-| 変数                   | 用途                                           |
-| ---------------------- | ---------------------------------------------- |
-| `BETTER_AUTH_SECRET`   | セッション署名鍵（必須・ランダムな長い文字列） |
-| `BETTER_AUTH_URL`      | 認証のベース URL（例 `http://localhost:3000`） |
-| `GOOGLE_CLIENT_ID`     | Google OAuth クライアント ID                   |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth クライアントシークレット          |
-
-### ローカル
-
-プロジェクト直下に `.dev.vars`（gitignore 済み）を作成して値を設定します。
-
-```ini
-BETTER_AUTH_SECRET=ローカル用のランダム文字列
-BETTER_AUTH_URL=http://localhost:3000
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-```
-
-> メール/パスワードのみで試す場合は `BETTER_AUTH_SECRET` と `BETTER_AUTH_URL` だけでも動作します。
-
-### 本番（Cloudflare）
-
-```bash
-wrangler secret put BETTER_AUTH_SECRET
-wrangler secret put BETTER_AUTH_URL
-wrangler secret put GOOGLE_CLIENT_ID
-wrangler secret put GOOGLE_CLIENT_SECRET
-```
-
-### Google OAuth クライアント
-
-Google Cloud Console で OAuth クライアント（種別: ウェブ）を作成し、
-**承認済みリダイレクト URI** に `{BETTER_AUTH_URL}/api/auth/callback/google`
-（例: `http://localhost:3000/api/auth/callback/google`）を登録します。
+- 未対応ブラウザ等で Cookie が無い場合は localStorage のみで動作します（進捗は端末内に保持）。
+- クロス端末同期（メール/OAuth でのログイン）は現状非対応です。
 
 ### D1 マイグレーション
 
-スキーマ（`user` / `session` / `account` / `verification` / `lesson_progress` / `quiz_results`）は
-drizzle で生成し wrangler で適用します（`drizzle-kit push` は使いません）。
+スキーマ（`user` / `lesson_progress` / `quiz_results`）は drizzle で生成し wrangler で
+適用します（`drizzle-kit push` は使いません）。
 
 ```bash
 pnpm db:generate        # スキーマ変更時のみ
