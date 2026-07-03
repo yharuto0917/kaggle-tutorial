@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { quizResults } from "@/db/schema";
-import { type AppEnv, ensureUser } from "../context";
+import { type AppEnv, ensureUserStmt } from "../context";
 
 /** クイズ結果 API（Cookie 識別）。GET で一覧、POST で 1 件 upsert。 */
 export const quizRoute = new Hono<AppEnv>()
@@ -39,12 +39,11 @@ export const quizRoute = new Hono<AppEnv>()
 
 		const db = c.get("db");
 		const userId = c.get("userId");
-		await ensureUser(db, userId);
 		const answeredAt =
 			typeof body?.answeredAt === "number" && Number.isFinite(body.answeredAt)
 				? new Date(body.answeredAt)
 				: new Date();
-		const [row] = await db
+		const upsert = db
 			.insert(quizResults)
 			.values({
 				userId,
@@ -58,5 +57,7 @@ export const quizRoute = new Hono<AppEnv>()
 				set: { correct, selected: JSON.stringify(selected), answeredAt },
 			})
 			.returning();
+		// ユーザー行の作成（FK 用）と本体の upsert を 1 往復（batch）にまとめる。
+		const [, [row]] = await db.batch([ensureUserStmt(db, userId), upsert]);
 		return c.json(row);
 	});

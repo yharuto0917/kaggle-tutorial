@@ -15,12 +15,13 @@ export type AppEnv = {
 };
 
 /**
- * 進捗/クイズの書き込み前に、対象ユーザー行の存在を保証する（FK 用）。
- * Cookie 識別のため email は合成値を入れる。
+ * 進捗/クイズの書き込み前に、対象ユーザー行の存在を保証する（FK 用）文を組み立てる。
+ * Cookie 識別のため email は合成値を入れる。呼び出し側で本体の upsert と
+ * `db.batch([ensureUserStmt(db, userId), upsert])` に束ねて 1 往復にする。
  */
-export async function ensureUser(db: Database, userId: string): Promise<void> {
+export function ensureUserStmt(db: Database, userId: string) {
 	const now = new Date();
-	await db
+	return db
 		.insert(user)
 		.values({
 			id: userId,

@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { lessonProgress } from "@/db/schema";
-import { type AppEnv, ensureUser } from "../context";
+import { type AppEnv, ensureUserStmt } from "../context";
 
 /** レッスン進捗 API（Cookie 識別）。GET で一覧、POST で 1 件 upsert。 */
 export const progressRoute = new Hono<AppEnv>()
@@ -32,9 +32,8 @@ export const progressRoute = new Hono<AppEnv>()
 
 		const db = c.get("db");
 		const userId = c.get("userId");
-		await ensureUser(db, userId);
 		const now = new Date();
-		const [row] = await db
+		const upsert = db
 			.insert(lessonProgress)
 			.values({ userId, lessonId, status, updatedAt: now })
 			.onConflictDoUpdate({
@@ -50,5 +49,7 @@ export const progressRoute = new Hono<AppEnv>()
 							},
 			})
 			.returning();
+		// ユーザー行の作成（FK 用）と本体の upsert を 1 往復（batch）にまとめる。
+		const [, [row]] = await db.batch([ensureUserStmt(db, userId), upsert]);
 		return c.json(row);
 	});
