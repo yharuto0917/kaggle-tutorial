@@ -33,9 +33,9 @@
 		{
 			"binding": "DB",
 			"database_name": "kaggle_tutorial_db",
-			// TODO: `wrangler d1 create kaggle_tutorial_db` の出力 ID に置き換える。
-			//       ローカルマイグレーション（--local）はこのプレースホルダのままでも動作する。
-			"database_id": "00000000-0000-0000-0000-000000000000",
+			// `wrangler d1 create kaggle_tutorial_db` の出力 ID（本番）。
+			// ローカル開発は --local の隔離 SQLite を使うため本番へは接続しない。
+			"database_id": "31e5488b-40e4-43cf-8bbb-2df68e1f38c6",
 			// drizzle-kit の out と一致させる（生成 SQL を wrangler で適用）。
 			"migrations_dir": "drizzle",
 		},
