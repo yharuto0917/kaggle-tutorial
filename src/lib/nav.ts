@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 /** クライアントコンポーネントへ渡すための、シリアライズ可能なナビゲーションモデル。 */
 export type NavItem = { title: string; url: string };
-export type NavGroup = { title: string | null; items: NavItem[] };
+export type NavGroup = { title: string | null; description?: string; items: NavItem[] };
 
 function toText(name: ReactNode): string {
 	return typeof name === "string" ? name : "";
@@ -21,6 +21,7 @@ export function buildNav(tree: Root): NavGroup[] {
 		if (node.type === "folder") {
 			groups.push({
 				title: toText(node.name),
+				description: node.description ? toText(node.description) : undefined,
 				items: node.children
 					.filter((child): child is Item => child.type === "page")
 					.map((child) => ({ title: toText(child.name), url: child.url })),
