@@ -101,6 +101,42 @@ describe("API（workers / D1・Cookie 識別）", () => {
 			});
 			expect(res.status).toBe(400);
 		});
+
+		it("暗黙の in-progress（explicit なし）は completed を降格しない", async () => {
+			await app.request("/api/progress", {
+				method: "POST",
+				headers: headers("u1"),
+				body: JSON.stringify({ lessonId: "/learn/x", status: "completed" }),
+			});
+			await app.request("/api/progress", {
+				method: "POST",
+				headers: headers("u1"),
+				body: JSON.stringify({ lessonId: "/learn/x", status: "in-progress" }),
+			});
+			const rows = (await (
+				await app.request("/api/progress", { headers: headers("u1") })
+			).json()) as Array<{ status: string }>;
+			expect(rows).toHaveLength(1);
+			expect(rows[0].status).toBe("completed");
+		});
+
+		it("explicit: true の in-progress は completed を取り消せる", async () => {
+			await app.request("/api/progress", {
+				method: "POST",
+				headers: headers("u1"),
+				body: JSON.stringify({ lessonId: "/learn/x", status: "completed" }),
+			});
+			await app.request("/api/progress", {
+				method: "POST",
+				headers: headers("u1"),
+				body: JSON.stringify({ lessonId: "/learn/x", status: "in-progress", explicit: true }),
+			});
+			const rows = (await (
+				await app.request("/api/progress", { headers: headers("u1") })
+			).json()) as Array<{ status: string }>;
+			expect(rows).toHaveLength(1);
+			expect(rows[0].status).toBe("in-progress");
+		});
 	});
 
 	describe("/api/quiz", () => {

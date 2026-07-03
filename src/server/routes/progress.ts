@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { lessonProgress } from "@/db/schema";
 import { type AppEnv, ensureUser } from "../context";
@@ -17,10 +17,12 @@ export const progressRoute = new Hono<AppEnv>()
 		const body = (await c.req.json().catch(() => null)) as {
 			lessonId?: unknown;
 			status?: unknown;
+			explicit?: unknown;
 		} | null;
 
 		const lessonId = typeof body?.lessonId === "string" ? body.lessonId.trim() : "";
 		const status = body?.status;
+		const explicit = body?.explicit === true;
 		if (lessonId.length === 0) {
 			return c.json({ error: "lessonId（文字列）が必要です" }, 400);
 		}
@@ -37,7 +39,15 @@ export const progressRoute = new Hono<AppEnv>()
 			.values({ userId, lessonId, status, updatedAt: now })
 			.onConflictDoUpdate({
 				target: [lessonProgress.userId, lessonProgress.lessonId],
-				set: { status, updatedAt: now },
+				// レッスン訪問（markVisited）由来の暗黙 in-progress は、既に completed の
+				// 行を降格させない（explicit なユーザー操作の取り消しのみ許可）。
+				set:
+					status === "completed" || explicit
+						? { status, updatedAt: now }
+						: {
+								status: sql`CASE WHEN ${lessonProgress.status} = 'completed' THEN 'completed' ELSE 'in-progress' END`,
+								updatedAt: sql`CASE WHEN ${lessonProgress.status} = 'completed' THEN ${lessonProgress.updatedAt} ELSE ${now.getTime()} END`,
+							},
 			})
 			.returning();
 		return c.json(row);

@@ -63,8 +63,16 @@ export function subscribeProgress(onChange: () => void): () => void {
 	};
 }
 
-/** 1 件変更時に同期層（#25）が拾うための詳細。一括置換時は付けない。 */
-export type LessonProgressChange = { lessonId: string; status: LessonStatus };
+/**
+ * 1 件変更時に同期層（#25）が拾うための詳細。一括置換時は付けない。
+ * `source` は暗黙の訪問記録（"visit"）か、ユーザーの明示操作（"user"）かを区別する。
+ * 同期層はこれを見て、暗黙の in-progress で D1 の completed を降格しないようにする。
+ */
+export type LessonProgressChange = {
+	lessonId: string;
+	status: LessonStatus;
+	source: "user" | "visit";
+};
 
 function write(map: LessonProgressMap, detail?: LessonProgressChange): void {
 	if (typeof window === "undefined") return;
@@ -77,7 +85,11 @@ function write(map: LessonProgressMap, detail?: LessonProgressChange): void {
 }
 
 /** レッスンの状態を設定する。null を渡すと記録を削除する。 */
-export function setLessonStatus(lessonId: string, status: LessonStatus | null): void {
+export function setLessonStatus(
+	lessonId: string,
+	status: LessonStatus | null,
+	source: "user" | "visit" = "user",
+): void {
 	const current = getLessonProgressMap();
 	const next: LessonProgressMap = { ...current };
 	if (status === null) {
@@ -85,7 +97,7 @@ export function setLessonStatus(lessonId: string, status: LessonStatus | null): 
 	} else {
 		next[lessonId] = { status, updatedAt: Date.now() };
 	}
-	write(next, status === null ? undefined : { lessonId, status });
+	write(next, status === null ? undefined : { lessonId, status, source });
 }
 
 /** 進捗マップ全体を置き換える（ログイン時の D1 ミラー用）。詳細なしで通知し書き戻しを防ぐ。 */
@@ -96,7 +108,7 @@ export function replaceLessonProgress(map: LessonProgressMap): void {
 /** 未記録のレッスンを「閲覧開始（in-progress）」にする。完了済みは変更しない（冪等）。 */
 export function markVisited(lessonId: string): void {
 	if (getLessonProgressMap()[lessonId]) return;
-	setLessonStatus(lessonId, "in-progress");
+	setLessonStatus(lessonId, "in-progress", "visit");
 }
 
 /** レッスンを完了にする。 */

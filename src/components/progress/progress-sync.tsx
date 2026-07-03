@@ -48,7 +48,8 @@ async function syncProgress(): Promise<void> {
 
 	for (const [lessonId, v] of Object.entries(mergedP)) {
 		const r = remoteP[lessonId];
-		if (!r || r.status !== v.status) await postJson(PROGRESS_URL, { lessonId, status: v.status });
+		if (!r || r.status !== v.status)
+			await postJson(PROGRESS_URL, { lessonId, status: v.status, explicit: false });
 	}
 	for (const [quizId, v] of Object.entries(mergedQ)) {
 		const r = remoteQ[quizId];
@@ -79,9 +80,16 @@ export function ProgressSync() {
 	// 単一の変更（detail 付き）を D1 へ書き込む。一括置換（detail なし）は無視。
 	useEffect(() => {
 		function onProgress(e: Event) {
-			const d = (e as CustomEvent).detail as { lessonId: string; status: string } | undefined;
+			const d = (e as CustomEvent).detail as
+				| { lessonId: string; status: string; source: "user" | "visit" }
+				| undefined;
 			if (!d) return;
-			void postJson(PROGRESS_URL, { lessonId: d.lessonId, status: d.status });
+			// 暗黙の訪問記録（"visit"）は D1 の completed を降格しない（サーバー側でガード）。
+			void postJson(PROGRESS_URL, {
+				lessonId: d.lessonId,
+				status: d.status,
+				explicit: d.source !== "visit",
+			});
 		}
 		function onQuiz(e: Event) {
 			const d = (e as CustomEvent).detail as
