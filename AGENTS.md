@@ -56,8 +56,8 @@
 
 ## 主要コマンド
 
-- `pnpm dev`: ローカル開発環境の起動（Next.jsとHono Workerの同時起動）
+- `pnpm dev`: ローカル開発環境の起動（Next.js dev server。Hono API は同一プロセス内の Route Handler `src/app/api/[[...route]]/route.ts` 上で動作し、別 Worker として起動するわけではない）
 - `pnpm check`: コード品質の一括チェック（lint, format:check, typecheck, test, build）
-- `pnpm preview:full`: OpenNextビルド及びWranglerを用いたローカル動作確認
-- `pnpm deploy`: 本番環境へのデプロイ（demos Workerを先にデプロイしてから、webをデプロイする）
+- `pnpm preview`: OpenNextビルド及びWranglerを用いたローカル動作確認
+- `pnpm deploy`: 本番環境へのデプロイ（OpenNext でビルドし、単一の Cloudflare Worker（`kaggle-tutorial`）へデプロイする）
 - `pnpm typegen`: Cloudflare Bindingsの型定義生成

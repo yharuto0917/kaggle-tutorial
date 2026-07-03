@@ -18,6 +18,7 @@ const eslintConfig = [
 			".open-next/**",
 			".wrangler/**",
 			".source/**",
+			"public/pagefind/**",
 			"out/**",
 			"build/**",
 			"coverage/**",
