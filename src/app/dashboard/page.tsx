@@ -9,7 +9,14 @@ import {
 	quizResults,
 	type QuizResultRow,
 } from "@/db/schema";
-import { computeStreak, quizAccuracy, trackProgress } from "@/lib/dashboard";
+import {
+	computeStreak,
+	dayStr,
+	navGroupsToTracks,
+	percent,
+	quizAccuracy,
+	trackProgress,
+} from "@/lib/dashboard";
 import { buildNav } from "@/lib/nav";
 import { USER_COOKIE } from "@/lib/session";
 import { source } from "@/lib/source";
@@ -38,16 +45,13 @@ export default async function DashboardPage() {
 	const completed = new Set(
 		progress.filter((p) => p.status === "completed").map((p) => p.lessonId),
 	);
-	const tracks = buildNav(source.pageTree)
-		.filter((g) => g.items.length > 0)
-		.map((g) => ({ title: g.title ?? "その他", urls: g.items.map((i) => i.url) }));
-	const tp = trackProgress(completed, tracks);
+	const tp = trackProgress(completed, navGroupsToTracks(buildNav(source.pageTree)));
 	const qa = quizAccuracy(quizzes);
 	const streak = computeStreak(
 		[...progress.map((p) => +p.updatedAt), ...quizzes.map((q) => +q.answeredAt)],
 		nowMs(),
 	);
-	const overallPct = tp.total > 0 ? Math.round((tp.done / tp.total) * 100) : 0;
+	const overallPct = percent(tp.done, tp.total);
 
 	const recent = [
 		...progress.map((p) => ({
@@ -114,9 +118,7 @@ export default async function DashboardPage() {
 										<span className="text-foreground/60">{r.name}</span>
 									)}
 								</span>
-								<time className="shrink-0 text-xs text-foreground/50">
-									{new Date(r.at).toISOString().slice(0, 10)}
-								</time>
+								<time className="shrink-0 text-xs text-foreground/50">{dayStr(r.at)}</time>
 							</li>
 						))}
 					</ul>

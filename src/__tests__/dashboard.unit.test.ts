@@ -46,5 +46,19 @@ describe("dashboard 集計", () => {
 		it("2 日以上前で途切れていれば 0", () => {
 			expect(computeStreak([day(20), day(19)], NOW)).toBe(0);
 		});
+		it("UTC 深夜の活動を JST の日付として数える（JST 境界）", () => {
+			// UTC 2026-06-22 20:00 = JST 2026-06-23 05:00（JST では「今日」の活動）
+			const lateUtcActivity = Date.UTC(2026, 5, 22, 20, 0, 0);
+			// UTC 2026-06-23 03:00 = JST 2026-06-23 12:00（「今日」の基準時刻）
+			const now = Date.UTC(2026, 5, 23, 3, 0, 0);
+			expect(computeStreak([lateUtcActivity], now)).toBe(1);
+		});
+		it("JST では同日でも UTC 日付が割れる活動は 1 日として数える", () => {
+			// JST 2026-06-23 06:00（UTC 06-22 21:00）と JST 2026-06-23 22:00（UTC 06-23 13:00）
+			const morningJst = Date.UTC(2026, 5, 22, 21, 0, 0);
+			const eveningJst = Date.UTC(2026, 5, 23, 13, 0, 0);
+			const now = eveningJst;
+			expect(computeStreak([morningJst, eveningJst], now)).toBe(1);
+		});
 	});
 });

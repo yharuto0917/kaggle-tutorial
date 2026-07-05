@@ -4,9 +4,9 @@ name: Deploy
 # 必要な GitHub Secrets:
 #   - CLOUDFLARE_API_TOKEN  : D1・Workers のデプロイ権限を持つ API トークン
 #   - CLOUDFLARE_ACCOUNT_ID : Cloudflare アカウント ID
-# 事前準備（手動・一度きり）:
+# 事前準備（手動・一度きり、対応済み）:
 #   - `wrangler d1 create kaggle_tutorial_db` で D1 を作成し、出力 database_id を
-#     wrangler.jsonc の d1_databases[0].database_id に設定（現状はプレースホルダ）。
+#     wrangler.jsonc の d1_databases[0].database_id に設定済み。
 on:
   push:
     branches: [main]
@@ -45,11 +45,32 @@ jobs:
         run: pnpm db:migrate:remote
 
       # Next ビルド＋postbuild で Pagefind 索引を public/pagefind/ に生成する。
-      # （opennextjs-cloudflare build は内部で next build を呼ぶが postbuild は走らないため、
-      #   索引生成のためにここで pnpm build を実行する。）
+      # NEXT_PRIVATE_STANDALONE は opennextjs-cloudflare が内部の next build で
+      # 付与するのと同じフラグで、.next/standalone（OpenNext が要求する出力）も
+      # このビルドで生成させる。これと次ステップの SKIP_NEXT_APP_BUILD を組み合わせ、
+      # next build がデプロイのたびに 2 回（Pagefind 索引用・OpenNext 用）走っていた
+      # のを 1 回に減らす。
       - name: Build (Next + Pagefind index)
+        env:
+          NEXT_PRIVATE_STANDALONE: "true"
         run: pnpm build
 
+      # NEXT_PRIVATE_STANDALONE / SKIP_NEXT_APP_BUILD は Next.js / OpenNext の内部フラグで、
+      # 将来のバージョンで挙動が変わりうる。OpenNext は SKIP_NEXT_APP_BUILD 時に standalone の
+      # 有無を検証せず警告のみで続行するため、フラグが効かず .next/standalone が生成されない
+      # 場合にデプロイが古い出力を掴む/不可解に壊れるのを、ここで明示的に検出して即失敗させる。
+      - name: Verify standalone output
+        run: |
+          test -d .next/standalone || {
+            echo "::error::.next/standalone が見つかりません。NEXT_PRIVATE_STANDALONE が効いていない可能性があります（Next.js のバージョン更新を確認してください）。"
+            exit 1
+          }
+
       # OpenNext でビルドし Cloudflare へデプロイ（public/pagefind/ を含む）。
+      # SKIP_NEXT_APP_BUILD で opennextjs-cloudflare build 内部の next build を
+      # スキップし、直前の Build ステップが NEXT_PRIVATE_STANDALONE 付きで生成した
+      # .next/standalone をそのまま使う（存在は直前の Verify ステップで担保済み）。
       - name: Deploy (OpenNext → Cloudflare)
+        env:
+          SKIP_NEXT_APP_BUILD: "1"
         run: pnpm deploy

@@ -5,7 +5,6 @@ import {
 	getLessonProgressMap,
 	type LessonProgressMap,
 	type LessonStatus,
-	markCompleted,
 	markVisited,
 	subscribeProgress,
 	toggleCompleted,
@@ -24,14 +23,12 @@ export function useProgressMap(): LessonProgressMap {
 export function useLessonProgress(lessonId: string): {
 	status: LessonStatus | null;
 	markVisited: () => void;
-	markCompleted: () => void;
 	toggle: () => void;
 } {
 	const map = useProgressMap();
 	return {
 		status: map[lessonId]?.status ?? null,
 		markVisited: () => markVisited(lessonId),
-		markCompleted: () => markCompleted(lessonId),
 		toggle: () => toggleCompleted(lessonId),
 	};
 }

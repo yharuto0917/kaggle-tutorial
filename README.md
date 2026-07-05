@@ -26,14 +26,14 @@ pnpm dev
 
 ## 主要コマンド
 
-| コマンド            | 内容                                                               |
-| ------------------- | ------------------------------------------------------------------ |
-| `pnpm dev`          | ローカル開発サーバー起動                                           |
-| `pnpm check`        | 品質チェック一括（lint / format:check / typecheck / test / build） |
-| `pnpm format`       | Prettier で整形                                                    |
-| `pnpm preview:full` | OpenNext ビルド + Wrangler でローカル動作確認                      |
-| `pnpm deploy`       | Cloudflare へデプロイ                                              |
-| `pnpm typegen`      | Cloudflare Bindings の型定義生成                                   |
+| コマンド       | 内容                                                               |
+| -------------- | ------------------------------------------------------------------ |
+| `pnpm dev`     | ローカル開発サーバー起動                                           |
+| `pnpm check`   | 品質チェック一括（lint / format:check / typecheck / test / build） |
+| `pnpm format`  | Prettier で整形                                                    |
+| `pnpm preview` | OpenNext ビルド + Wrangler でローカル動作確認                      |
+| `pnpm deploy`  | Cloudflare へデプロイ                                              |
+| `pnpm typegen` | Cloudflare Bindings の型定義生成                                   |
 
 ## 学習進捗の保存（Cookie ベース）
 

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { buildNav } from "@/lib/nav";
+import { source } from "@/lib/source";
 
 const features = [
 	{
@@ -19,39 +21,18 @@ const features = [
 	},
 ];
 
-const curriculum = [
-	{
-		level: "L0",
-		title: "Kaggle オンボーディング",
-		description: "プラットフォーム・コンペの構造・提出・称号",
-	},
-	{ level: "L1", title: "Python & データ分析基礎", description: "Python / pandas / 可視化 / EDA" },
-	{ level: "L2", title: "機械学習の基礎", description: "タスク設定・交差検証・評価指標" },
-	{ level: "L3", title: "実践入門コンペ", description: "Titanic・House Prices で提出まで" },
-	{
-		level: "L4",
-		title: "特徴量エンジニアリング & 検証戦略",
-		description: "エンコーディング・リーク対策・CV 設計",
-	},
-	{
-		level: "L5",
-		title: "勾配ブースティング & チューニング",
-		description: "XGBoost / LightGBM / CatBoost・Optuna",
-	},
-	{
-		level: "L6",
-		title: "アンサンブル & コンペ戦略",
-		description: "stacking・shake-up 対策・実験管理",
-	},
-	{ level: "L7", title: "ディープラーニング実践", description: "PyTorch・CV・NLP・時系列" },
-	{
-		level: "L8",
-		title: "上級テクニック & GM への道",
-		description: "target encoding・adversarial validation 他",
-	},
-];
-
 export default function Home() {
+	// トラック一覧・順序・説明文は content/learn 配下の meta.json を単一の情報源とする
+	// （buildNav が各トラックの title/description を読む）。ハードコードすると
+	// トラックの改名・追加のたびにここだけ古いままになる。
+	const curriculum = buildNav(source.pageTree)
+		.filter((g) => g.title !== null)
+		.map((g, i) => ({
+			level: `L${i}`,
+			title: g.title as string,
+			description: g.description ?? "",
+		}));
+
 	return (
 		<main>
 			{/* ヒーロー */}

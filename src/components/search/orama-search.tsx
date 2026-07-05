@@ -2,26 +2,25 @@
 
 import type { AnyOrama } from "@orama/orama";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createSearchIndex, type SearchDoc, type SearchHit, searchIndex } from "@/lib/orama-search";
+
+/** 検索語の入力が落ち着いてから検索を実行するまでの遅延（ミリ秒）。 */
+const SEARCH_DEBOUNCE_MS = 150;
 
 /**
  * Orama によるタイポ許容のインスタント検索。タイトル・別名・説明を対象にする。
  * 本文の全文検索は下部の Pagefind が担う（併用）。
  */
 export function OramaSearch({ documents }: { documents: SearchDoc[] }) {
-	const dbRef = useRef<AnyOrama | null>(null);
-	const [ready, setReady] = useState(false);
+	const [db, setDb] = useState<AnyOrama | null>(null);
 	const [term, setTerm] = useState("");
 	const [hits, setHits] = useState<SearchHit[]>([]);
 
 	useEffect(() => {
 		let cancelled = false;
-		createSearchIndex(documents).then((db) => {
-			if (!cancelled) {
-				dbRef.current = db;
-				setReady(true);
-			}
+		createSearchIndex(documents).then((d) => {
+			if (!cancelled) setDb(d);
 		});
 		return () => {
 			cancelled = true;
@@ -29,16 +28,18 @@ export function OramaSearch({ documents }: { documents: SearchDoc[] }) {
 	}, [documents]);
 
 	useEffect(() => {
-		const db = dbRef.current;
 		if (!db) return;
 		let cancelled = false;
-		searchIndex(db, term).then((r) => {
-			if (!cancelled) setHits(r);
-		});
+		const timer = setTimeout(() => {
+			searchIndex(db, term).then((r) => {
+				if (!cancelled) setHits(r);
+			});
+		}, SEARCH_DEBOUNCE_MS);
 		return () => {
 			cancelled = true;
+			clearTimeout(timer);
 		};
-	}, [term, ready]);
+	}, [db, term]);
 
 	return (
 		<div>

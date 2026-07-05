@@ -1,3 +1,5 @@
+import { percent } from "@/lib/dashboard";
+
 /** 完了数 / 全体数を表す進捗バー（プレゼンテーションのみ）。 */
 export function ProgressBar({
 	value,
@@ -8,7 +10,7 @@ export function ProgressBar({
 	total: number;
 	label?: string;
 }) {
-	const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+	const pct = percent(value, total);
 
 	return (
 		<div>
