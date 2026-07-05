@@ -1,0 +1,18 @@
+node_modules
+.next
+.open-next
+.wrangler
+out
+build
+coverage
+pnpm-lock.yaml
+*.tsbuildinfo
+next-env.d.ts
+cloudflare-env.d.ts
+
+# drizzle-kit 生成物（SQL / メタ JSON は整形対象外）
+/drizzle
+
+# エージェント向けガバナンス文書（自動整形による差分混入を避ける）
+AGENTS.md
+CLAUDE.md

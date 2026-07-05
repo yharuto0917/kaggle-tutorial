@@ -1,0 +1,75 @@
+---
+title: Titanic — 生存予測（分類入門）
+description: Kaggle の定番入門コンペ Titanic を題材に、EDA からベースライン提出までの流れを学びます。
+---
+
+## 概要
+
+[Titanic - Machine Learning from Disaster](https://www.kaggle.com/competitions/titanic) は、
+乗客の属性から **生存したかどうか（0/1）を予測する二値分類**コンペです。
+データが小さく前提知識も少なくて済むため、Kaggle と機械学習ワークフローの入門に最適です。
+
+<Callout type="note">
+	評価指標は **Accuracy（正解率）**。提出は `PassengerId` と予測した `Survived` の 2 列の CSV です。
+</Callout>
+
+## データ
+
+主な特徴量は以下のとおりです。
+
+- `Pclass`（客室クラス）、`Sex`（性別）、`Age`（年齢）
+- `SibSp` / `Parch`（同乗の家族数）、`Fare`（運賃）、`Embarked`（乗船港）
+
+## ベースラインの方針
+
+まずは**最小構成で提出まで通す**ことを優先します。欠損を簡単に埋め、
+カテゴリ変数を数値化し、ランダムフォレストで予測します。
+
+```python
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+
+train = pd.read_csv("/kaggle/input/titanic/train.csv")
+test = pd.read_csv("/kaggle/input/titanic/test.csv")
+
+features = ["Pclass", "Sex", "SibSp", "Parch"]
+X = pd.get_dummies(train[features])
+X_test = pd.get_dummies(test[features])
+y = train["Survived"]
+
+model = RandomForestClassifier(n_estimators=200, max_depth=5, random_state=42)
+model.fit(X, y)
+pred = model.predict(X_test)
+
+submission = pd.DataFrame({"PassengerId": test["PassengerId"], "Survived": pred})
+submission.to_csv("submission.csv", index=False)
+```
+
+<RunLinks
+	colab="https://colab.research.google.com/"
+	kaggle="https://www.kaggle.com/competitions/titanic"
+/>
+
+## 提出
+
+生成した `submission.csv` をコンペの **Submit Predictions** からアップロードすると、
+Public Leaderboard にスコアが表示されます。
+
+<Callout type="tip">
+	最初の提出でスコアが出たら成功です。以降は特徴量（`Age` の補完、`Fare`、`Embarked` など）を
+	少しずつ加えて Cross Validation で改善していきましょう。
+</Callout>
+
+## 学習トラックで詳しく学ぶ
+
+このコンペの取り組みは、学習トラックで段階的に解説しています。
+
+- [L3-02 Titanic：問題理解と EDA](/learn/intro-competitions/02-titanic-eda)
+- [L3-03 前処理・特徴量・ベースライン・提出](/learn/intro-competitions/03-titanic-baseline)
+- [L3-04 CV と改善・スコア向上](/learn/intro-competitions/04-titanic-cv)
+
+## 次のステップ
+
+- 欠損値補完と特徴量エンジニアリング
+- 交差検証（StratifiedKFold）で安定したスコア評価
+- 勾配ブースティング（LightGBM 等）への置き換え

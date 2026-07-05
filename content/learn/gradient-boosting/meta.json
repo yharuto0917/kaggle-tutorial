@@ -1,0 +1,14 @@
+{
+	"title": "勾配ブースティング & ハイパラ最適化",
+	"description": "XGBoost / LightGBM / CatBoost の使い分けと Optuna による最適化を学ぶトラック",
+	"pages": [
+		"01-trees-to-ensembles",
+		"02-random-forest",
+		"03-gbdt-principle",
+		"04-xgboost",
+		"05-lightgbm",
+		"06-catboost",
+		"07-gbdt-comparison",
+		"08-hyperparameter-optimization"
+	]
+}

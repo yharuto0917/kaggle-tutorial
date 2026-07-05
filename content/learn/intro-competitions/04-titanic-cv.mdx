@@ -1,0 +1,78 @@
+---
+title: 【Titanic】CV と改善・スコア向上
+description: 交差検証で安定評価し、特徴量を足してベースラインからスコアを伸ばす改善ループを実践します。
+---
+
+## CV を組む
+
+提出スコアだけに頼らず、手元で[[交差検証]]を組んで判断します。
+分類なのでクラス比率を保つ [[Stratified K-Fold]] を使います。
+
+```python
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+model = RandomForestClassifier(n_estimators=300, max_depth=5, random_state=42)
+
+scores = cross_val_score(model, X, y, cv=cv, scoring="accuracy")
+print(f"CV accuracy: {scores.mean():.4f} +/- {scores.std():.4f}")
+```
+
+この CV スコアを基準に、変更が効いたかどうかを判断します。
+
+## 特徴量を足す
+
+EDA の知見をもとに、効きそうな特徴を追加します。
+
+```python
+def add_features(df):
+    df = df.copy()
+    # 家族の人数（同乗者 + 本人）
+    df["FamilySize"] = df["SibSp"] + df["Parch"] + 1
+    df["IsAlone"] = (df["FamilySize"] == 1).astype(int)
+    # 敬称（Mr / Mrs / Miss / Master など）
+    df["Title"] = df["Name"].str.extract(r",\s*([^.]+)\.")
+    return df
+```
+
+`Title`（敬称）は年齢や性別・社会的地位の代理になり、生存予測に効くことが知られています。
+
+<Callout type="tip">
+	**一度に一つだけ変えて CV を見る**のが鉄則です。複数同時に変えると、何が効いたのか分かりません。
+	効いた変更だけを残していきましょう。
+</Callout>
+
+## 改善ループ
+
+1. 特徴量を 1 つ足す / モデルを変える
+2. CV スコアを測る
+3. 改善したら採用 → 再提出、悪化したら戻す
+
+<Callout type="warning">
+	CV は上がったのに Public LB が下がる場合、検証設計の見直しが必要です。CV と LB が
+	かけ離れると[[シェイクアップ]]の温床になります。基本は**手元の CV を信じます**。
+</Callout>
+
+<RunLinks
+	colab="https://colab.research.google.com/"
+	kaggle="https://www.kaggle.com/competitions/titanic"
+/>
+
+## 理解度チェック
+
+<Quiz
+	id="l3-04"
+	question="改善ループで効果を正しく見極めるコツは？"
+	options={[
+		"一度に複数の変更をまとめて試す",
+		"変更は一つずつ行い、そのたびに CV スコアを比較する",
+		"Public LB だけを見て判断する",
+	]}
+	answer={1}
+	explanation="一度に一つだけ変えて CV を比較すると、何が効いたかを切り分けられます。LB だけの判断は過学習・シェイクアップを招きます。"
+/>
+
+## 次のステップ
+
+次は回帰コンペの House Prices に移り、歪んだ目的変数の扱い（対数変換）から学びます。

@@ -1,0 +1,67 @@
+---
+title: 数値変換 — スケーリング・ビニング・対数・交互作用
+description: 数値特徴のスケーリング、ビニング、対数/Box-Cox 変換、交互作用特徴の作り方を学びます。
+---
+
+## スケーリング
+
+特徴ごとに大きさ（スケール）が違うと、線形モデルや距離ベースの手法が偏ります。
+
+- [[標準化]]：平均 0・分散 1 に変換（外れ値の影響を受けにくい）
+- [[正規化]]（Min-Max）：0〜1 に収める（外れ値に弱い）
+
+```python
+from sklearn.preprocessing import StandardScaler
+X_scaled = StandardScaler().fit_transform(X[num_cols])
+```
+
+<Callout type="note">
+	[[勾配ブースティング（GBDT）]]は分割ベースなのでスケーリング不要です。スケーリングが効くのは
+	主に線形モデル・SVM・k近傍法・ニューラルネットです。
+</Callout>
+
+## 歪んだ分布を整える
+
+裾の長い分布は[[対数変換]]や Box-Cox / Yeo-Johnson で対称に近づけると、線形モデルが扱いやすくなります。
+
+```python
+import numpy as np
+df["Fare_log"] = np.log1p(df["Fare"])   # log(1 + x)
+```
+
+## ビニング（離散化）
+
+[[ビニング]]は連続値を区間に区切ってカテゴリ化します。非線形な関係の表現や外れ値の緩和に有効です。
+
+```python
+df["Age_bin"] = pd.cut(df["Age"], bins=[0, 12, 18, 40, 60, 200],
+                       labels=["child", "teen", "adult", "middle", "senior"])
+```
+
+## 交互作用特徴
+
+複数の特徴を掛け合わせる/比を取ると、単独では捉えられない関係を表現できます。
+
+```python
+df["Fare_per_person"] = df["Fare"] / (df["SibSp"] + df["Parch"] + 1)
+df["Pclass_x_Sex"] = df["Pclass"].astype(str) + "_" + df["Sex"]
+```
+
+<Callout type="tip">
+	交互作用は無数に作れますが、闇雲に増やすと[[過学習]]やノイズの原因になります。
+	ドメイン知識で「意味のある組み合わせ」に絞り、CV で効果を確認しましょう。
+</Callout>
+
+## 理解度チェック
+
+<Quiz
+	id="l4-03"
+	question="スケーリング（標準化）が基本的に不要なモデルはどれ？"
+	options={["線形回帰", "k近傍法（kNN）", "勾配ブースティング（GBDT）"]}
+	answer={2}
+	explanation="GBDT は特徴の大小で分割するためスケールに不変です。線形モデルや距離ベース（kNN）はスケーリングが効きます。"
+/>
+
+## 次のステップ
+
+次は、日時・周期・地理・集約といった、構造を持つデータからの特徴量生成を学びます。

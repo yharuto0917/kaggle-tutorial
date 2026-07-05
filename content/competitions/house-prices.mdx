@@ -1,0 +1,82 @@
+---
+title: House Prices — 住宅価格予測（回帰入門）
+description: Kaggle の定番回帰コンペ House Prices を題材に、対数変換から提出までの流れを学びます。
+---
+
+## 概要
+
+[House Prices - Advanced Regression Techniques](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques)
+は、住宅の特徴から **販売価格 `SalePrice` を予測する[[回帰]]**コンペです。
+約 80 個の特徴量があり、欠損処理や[[特徴量エンジニアリング]]の練習に最適です。
+
+<Callout type="note">
+	評価指標は **対数を取った価格の [[RMSE]]**（実質 [[RMSLE]]）。提出は `Id` と予測した `SalePrice`
+	の 2 列 CSV です。
+</Callout>
+
+## データ
+
+- 目的変数：`SalePrice`（販売価格、連続値・右に歪んだ分布）
+- 代表的な特徴：`OverallQual`（品質）、`GrLivArea`（居住面積）、`GarageCars`、`TotalBsmtSF` など
+
+## ベースラインの方針
+
+目的変数を[[対数変換]]（`log1p`）し、欠損補完とカテゴリ数値化を `Pipeline` でまとめ、
+回帰モデルで予測します。**予測後は `expm1` で価格スケールへ戻して提出**します。
+
+```python
+import numpy as np
+import pandas as pd
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.ensemble import GradientBoostingRegressor
+
+train = pd.read_csv("/kaggle/input/house-prices-advanced-regression-techniques/train.csv")
+test = pd.read_csv("/kaggle/input/house-prices-advanced-regression-techniques/test.csv")
+
+y = np.log1p(train["SalePrice"])
+X = train.drop(columns=["Id", "SalePrice"])
+X_test = test.drop(columns=["Id"])
+
+num = X.select_dtypes("number").columns
+cat = X.select_dtypes("object").columns
+pre = ColumnTransformer([
+    ("num", SimpleImputer(strategy="median"), num),
+    ("cat", Pipeline([
+        ("imp", SimpleImputer(strategy="most_frequent")),
+        ("oh", OneHotEncoder(handle_unknown="ignore")),
+    ]), cat),
+])
+
+model = Pipeline([("pre", pre), ("gbr", GradientBoostingRegressor(random_state=42))])
+model.fit(X, y)
+pred = np.expm1(model.predict(X_test))
+
+submission = pd.DataFrame({"Id": test["Id"], "SalePrice": pred})
+submission.to_csv("submission.csv", index=False)
+```
+
+<RunLinks
+	colab="https://colab.research.google.com/"
+	kaggle="https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques"
+/>
+
+## 提出
+
+生成した `submission.csv` をコンペの **Submit Predictions** からアップロードすると、
+Public [[リーダーボード]]にスコアが表示されます。
+
+<Callout type="tip">
+	対数変換した目的変数を `expm1` で戻し忘れると、スコアが極端に悪化します。提出前に
+	`submission.head()` で値の桁を必ず確認しましょう。
+</Callout>
+
+## 学習トラックで詳しく学ぶ
+
+このコンペの取り組みは、学習トラックで段階的に解説しています。
+
+- [L3-05 House Prices：問題理解と EDA](/learn/intro-competitions/05-house-prices-eda)
+- [L3-06 欠損処理・特徴量・回帰モデル・提出](/learn/intro-competitions/06-house-prices-baseline)
+- [L3-07 特徴量強化とアンサンブルの入口](/learn/intro-competitions/07-house-prices-ensemble)

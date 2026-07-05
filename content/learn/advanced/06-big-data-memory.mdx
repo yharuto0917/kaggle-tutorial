@@ -1,0 +1,76 @@
+---
+title: 大規模データ・メモリ最適化
+description: ダウンキャスト・チャンク読み込み・Polars/Dask で、大規模データを限られたメモリで扱う方法を学びます。
+---
+
+## メモリは有限
+
+Kaggle Notebook のメモリには上限があり、大規模データは読み込むだけで枯渇します。
+**型の最適化・分割読み込み・高速ライブラリ**でやりくりするのが上級者の必須スキルです。
+
+## 型のダウンキャスト
+
+pandas は既定で大きな型（int64/float64）を使います。値域に応じて小さい型へ落とすと、
+メモリを半分以下にできることがあります。
+
+```python
+import numpy as np
+
+def reduce_mem(df):
+    for col in df.select_dtypes(include=["int", "float"]).columns:
+        c_min, c_max = df[col].min(), df[col].max()
+        if df[col].dtype.kind == "i":
+            if c_min > np.iinfo(np.int32).min and c_max < np.iinfo(np.int32).max:
+                df[col] = df[col].astype("int32")
+        else:
+            df[col] = df[col].astype("float32")
+    return df
+```
+
+カテゴリ列は `astype("category")` でさらに削減できます。
+
+## チャンク読み込み
+
+一度に読めないファイルは、分割（チャンク）して処理します。
+
+```python
+chunks = pd.read_csv("big.csv", chunksize=1_000_000)
+agg = sum(chunk.groupby("id")["y"].sum() for chunk in chunks)
+```
+
+## 高速ライブラリ
+
+- **Polars**：Rust 製の高速・省メモリな DataFrame。遅延評価で大規模に強い
+- **Dask**：pandas 風 API で分散/コア外処理。メモリに乗らないデータを扱える
+
+```python
+import polars as pl
+
+df = pl.scan_csv("big.csv")                 # 遅延読み込み
+out = df.group_by("id").agg(pl.col("y").mean()).collect()
+```
+
+<Callout type="tip">
+	まず `reduce_mem` と必要な列だけの読み込み（`usecols`）で乗り切れることも多いです。
+	それでも足りないときに Polars/Dask やチャンク処理へ進みましょう。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 理解度チェック
+
+<Quiz
+	id="l8-06"
+	question="大規模データでメモリを節約する、最も手軽な第一歩は？"
+	options={[
+		"必ず Dask クラスタを構築する",
+		"数値型のダウンキャストや必要な列だけの読み込みでメモリを削減する",
+		"データを全部 float64 に統一する",
+	]}
+	answer={1}
+	explanation="型のダウンキャストや usecols での列選択が手軽で効果的です。それでも足りないときに Polars/Dask やチャンク処理へ進みます。"
+/>
+
+## 次のステップ
+
+次は、チーム戦略（マージ・役割分担・提出管理）を学びます。

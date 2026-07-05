@@ -1,0 +1,65 @@
+---
+title: adversarial validation
+description: train と test の分布差を分類器で検出し、検証設計や特徴選択に活かす方法を学びます。
+---
+
+## 分布差を疑う
+
+train と test の分布が違うと、CV が本番を反映せず[[シェイクアップ]]の原因になります。
+[[敵対的検証]]は、**train と test を見分ける分類器**を作って分布差を測る手法です。
+
+## やり方
+
+```python
+import pandas as pd
+import lightgbm as lgb
+from sklearn.model_selection import cross_val_predict
+from sklearn.metrics import roc_auc_score
+
+# train=0 / test=1 のラベルを付けて結合
+adv = pd.concat([train.assign(is_test=0), test.assign(is_test=1)], ignore_index=True)
+y = adv["is_test"]
+X = adv.drop(columns=["is_test", target])   # 目的変数は除く
+
+oof = cross_val_predict(lgb.LGBMClassifier(), X, y, cv=5, method="predict_proba")[:, 1]
+print("adversarial AUC:", roc_auc_score(y, oof))
+```
+
+## AUC の読み方
+
+- **[[AUC]] ≈ 0.5**：train と test を見分けられない＝分布はほぼ同じ。CV を信頼しやすい
+- **AUC が高い（例 0.8+）**：分布が大きく違う。検証設計や特徴を見直す合図
+
+分布差の原因を探すには、この分類器の**特徴量重要度**を見ます。重要度が高い特徴ほど、
+train/test を区別している（分布がずれている）特徴です。
+
+## 対策に活かす
+
+- **検証分割**：test に近い train サンプルを検証に使い、本番に近い CV を作る
+- **特徴選択**：分布がずれすぎる特徴を落とす/補正する
+- **サンプル重み**：test に近い train を重視して学習する
+
+<Callout type="tip">
+	adversarial validation は「CV が当てにならない理由」を可視化する診断ツールです。 スコアが CV と LB
+	で食い違うとき、まずこれで分布差を確認しましょう。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 理解度チェック
+
+<Quiz
+	id="l8-02"
+	question="adversarial validation で train/test を分類した AUC が約 0.5。意味は？"
+	options={[
+		"train と test の分布はほぼ同じで、CV を信頼しやすい",
+		"train と test の分布が大きく違う",
+		"モデルが過学習している",
+	]}
+	answer={0}
+	explanation="AUC≈0.5 は train/test を見分けられない＝分布が近いということ。高いほど分布差が大きく、検証や特徴の見直しが必要です。"
+/>
+
+## 次のステップ
+
+次は、テスト予測を学習に活かす疑似ラベル（pseudo-labeling）を学びます。

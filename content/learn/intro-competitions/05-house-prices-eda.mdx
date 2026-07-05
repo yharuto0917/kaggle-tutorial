@@ -1,0 +1,74 @@
+---
+title: 【House Prices】問題理解と EDA
+description: House Prices 回帰コンペの課題を理解し、歪んだ目的変数を対数変換する理由を学びます。
+---
+
+## 課題を理解する
+
+[House Prices](/competitions/house-prices) は、住宅の特徴から **販売価格 `SalePrice` を予測する[[回帰]]**コンペです。
+評価指標は **対数を取った価格の [[RMSE]]**（実質 [[RMSLE]]）で、
+**比率の誤差**が重視されます。提出は `Id` と `SalePrice` の 2 列 CSV です。
+
+```python
+import pandas as pd
+
+train = pd.read_csv("/kaggle/input/house-prices-advanced-regression-techniques/train.csv")
+test = pd.read_csv("/kaggle/input/house-prices-advanced-regression-techniques/test.csv")
+train.shape   # (1460, 81) 特徴量が多い
+```
+
+## 目的変数の歪み
+
+価格データは高額側に裾を引く（右に歪んだ）分布になりがちです。
+
+```python
+train["SalePrice"].skew()   # 大きな正の歪度
+```
+
+評価指標が対数ベースであることとも整合するため、**目的変数を対数変換**して扱います。
+
+```python
+import numpy as np
+
+y = np.log1p(train["SalePrice"])   # log(1 + x) で変換
+```
+
+[[対数変換]]すると分布が左右対称に近づき、線形モデルが扱いやすくなります。
+**予測後は `np.expm1` で元のスケールに戻して提出**します。
+
+<Callout type="warning">
+	`log1p` で学習したのに、予測値をそのまま提出すると桁が合いません。 提出前に必ず `expm1`
+	で逆変換することを忘れないでください。
+</Callout>
+
+## 特徴と欠損の把握
+
+```python
+# 数値特徴と SalePrice の相関上位
+num = train.select_dtypes("number")
+num.corr(numeric_only=True)["SalePrice"].sort_values(ascending=False).head(8)
+# OverallQual, GrLivArea, GarageCars などが上位
+
+# 欠損が多い列
+train.isnull().mean().sort_values(ascending=False).head(8)
+```
+
+`OverallQual`（全体の品質）や `GrLivArea`（居住面積）が価格に強く効くと分かります。
+
+## 理解度チェック
+
+<Quiz
+	id="l3-05"
+	question="右に裾を引く（歪んだ）目的変数 SalePrice を log1p で対数変換した。提出前に必要な処理は？"
+	options={[
+		"そのまま提出してよい",
+		"expm1 で元のスケールに戻してから提出する",
+		"もう一度 log1p をかける",
+	]}
+	answer={1}
+	explanation="log1p で学習・予測したら、提出前に expm1 で逆変換して元の価格スケールに戻す必要があります。"
+/>
+
+## 次のステップ
+
+次は欠損処理・特徴量の数値化・回帰モデルで提出まで通します。

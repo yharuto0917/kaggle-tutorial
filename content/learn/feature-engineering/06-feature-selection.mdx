@@ -1,0 +1,71 @@
+---
+title: 特徴量選択 — 重要度・permutation・null importance
+description: モデルの重要度、permutation importance、null importance で効く特徴を見極める方法を学びます。
+---
+
+## なぜ選択するか
+
+特徴量は多ければ良いわけではありません。冗長・無関係な特徴は[[過学習]]やノイズ、
+学習時間の増加を招きます。**効く特徴を見極めて絞る**のが特徴量選択です。
+
+## モデルの重要度（feature importance）
+
+[[勾配ブースティング（GBDT）]]は、各特徴が分割にどれだけ使われたかを重要度として出力します。
+
+```python
+import pandas as pd
+import lightgbm as lgb
+
+model = lgb.LGBMClassifier().fit(X, y)
+imp = pd.Series(model.feature_importances_, index=X.columns).sort_values(ascending=False)
+imp.head(20)
+```
+
+<Callout type="warning">
+	ツリーの分割回数ベースの重要度は、**高カーディナリティな特徴を過大評価**しがちです。
+	重要度の数値だけを鵜呑みにせず、次の手法と併用しましょう。
+</Callout>
+
+## permutation importance
+
+ある特徴の値をシャッフルしてスコアがどれだけ落ちるかを見ます。
+**落ちるほどその特徴は効いている**という、モデル非依存で直感的な指標です。
+
+```python
+from sklearn.inspection import permutation_importance
+
+r = permutation_importance(model, X_valid, y_valid, n_repeats=5, random_state=42)
+pd.Series(r.importances_mean, index=X.columns).sort_values(ascending=False).head(20)
+```
+
+検証データ上で測ることで、[[過学習]]を含めた「本当に効くか」を評価できます。
+
+## null importance
+
+目的変数を**シャッフル**して学習したときの重要度（＝偶然の重要度）の分布と、
+本物の重要度を比べます。**偶然を超えて重要な特徴だけ**を残す、リークにも強い手法です。
+
+```text
+1. 本物の y で重要度を記録
+2. y をシャッフルして学習 → 重要度を多数回記録（ヌル分布）
+3. 本物がヌル分布を有意に上回る特徴を採用
+```
+
+<Callout type="tip">
+	特徴を削るときも CV で確認します。「重要度が低い」と「CV に効かない」は必ずしも一致しません。
+	削って CV が悪化しないことを確かめてから採用しましょう。
+</Callout>
+
+## 理解度チェック
+
+<Quiz
+	id="l4-06"
+	question="permutation importance が「効く特徴」と判断するのは、ある特徴をシャッフルしたとき何が起きる場合？"
+	options={["スコアがほとんど変わらない", "スコアが大きく下がる", "学習時間が短くなる"]}
+	answer={1}
+	explanation="値をシャッフルしてスコアが大きく下がるほど、その特徴は予測に効いています。変化が小さければ重要度は低いと判断できます。"
+/>
+
+## 次のステップ
+
+次は、信頼できるスコアを得るための検証戦略（分割方法の使い分け）を学びます。

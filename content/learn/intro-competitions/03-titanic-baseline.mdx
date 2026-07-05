@@ -1,0 +1,81 @@
+---
+title: 【Titanic】前処理・特徴量・ベースライン・提出
+description: 最小構成の前処理とモデルで Titanic の submission.csv を作り、初提出までを通します。
+---
+
+## ベースラインの方針
+
+まずは**提出まで通す**ことを最優先にします。欠損を簡単に埋め、
+カテゴリを数値化し、扱いやすい[[ランダムフォレスト]]で予測します。
+
+## 前処理と特徴量
+
+```python
+import pandas as pd
+
+train = pd.read_csv("/kaggle/input/titanic/train.csv")
+test = pd.read_csv("/kaggle/input/titanic/test.csv")
+
+features = ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]
+
+def preprocess(df):
+    df = df.copy()
+    df["Age"] = df["Age"].fillna(df["Age"].median())
+    df["Fare"] = df["Fare"].fillna(df["Fare"].median())
+    df["Embarked"] = df["Embarked"].fillna("S")
+    return df
+
+X = pd.get_dummies(preprocess(train)[features])
+X_test = pd.get_dummies(preprocess(test)[features])
+X, X_test = X.align(X_test, join="left", axis=1, fill_value=0)  # 列をそろえる
+y = train["Survived"]
+```
+
+<Callout type="warning">
+	`get_dummies` を train/test で別々に作ると列がズレることがあります。`align` で
+	**列をそろえる**か、`pd.concat` してから分割しましょう。列の不一致は提出時エラーの定番原因です。
+</Callout>
+
+## 学習と submission の作成
+
+```python
+from sklearn.ensemble import RandomForestClassifier
+
+model = RandomForestClassifier(n_estimators=300, max_depth=5, random_state=42)
+model.fit(X, y)
+pred = model.predict(X_test)
+
+submission = pd.DataFrame({"PassengerId": test["PassengerId"], "Survived": pred})
+submission.to_csv("submission.csv", index=False)
+submission.head()
+```
+
+`index=False` を忘れると余分な列が入り、形式エラーになります。
+
+## 提出する
+
+生成した `submission.csv` をコンペの **Submit Predictions**（Notebook なら **Submit**）から提出すると、
+Public [[リーダーボード]]にスコアが出ます。**まずスコアが出れば成功**です。
+
+<RunLinks
+	colab="https://colab.research.google.com/"
+	kaggle="https://www.kaggle.com/competitions/titanic"
+/>
+
+## 理解度チェック
+
+<Quiz
+	id="l3-03"
+	question="train と test で get_dummies した後にやるべきことは？"
+	options={[
+		"そのまま学習してよい",
+		"列をそろえる（align / concat）。列がズレると提出・予測でエラーになる",
+		"test だけ数値化すればよい",
+	]}
+	answer={1}
+	explanation="カテゴリの水準差で列がズレるため、align や concat で train/test の列をそろえる必要があります。"
+/>
+
+## 次のステップ
+
+次は交差検証で安定したスコアを測り、特徴量を足して改善していきます。

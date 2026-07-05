@@ -1,0 +1,43 @@
+---
+title: Kaggle Notebooks 環境
+description: ブラウザで動く Kaggle Notebook の使い方、GPU/TPU・クォータ・データ接続・バージョン管理を学びます。
+---
+
+## Notebook とは
+
+Kaggle Notebook は、**ブラウザ上で動く Jupyter 環境**です。
+セットアップ不要で Python（または R）を実行でき、主要なライブラリ
+（pandas・NumPy・scikit-learn・PyTorch 等）が最初から入っています。
+
+## アクセラレータ（GPU / TPU）
+
+Notebook 右パネルの **Settings → Accelerator** から GPU や TPU を有効化できます。
+無料で使えますが**週あたりの利用時間に上限（クォータ）**があります。
+
+<Callout type="warning">
+	GPU クォータは貴重です。デバッグや軽い処理は CPU で行い、学習など重い処理のときだけ GPU
+	を有効化すると無駄なく使えます。
+</Callout>
+
+## データの接続
+
+- コンペの Notebook では、対象データが `/kaggle/input/<competition>/` に自動でマウントされます。
+- 任意のデータセットは **Add Input** から追加でき、同じく `/kaggle/input/` 配下に現れます。
+
+```python
+import os
+
+# マウントされたデータを確認
+for dirname, _, filenames in os.walk("/kaggle/input"):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+```
+
+## インターネットと再現性
+
+- 既定では**インターネットがオフ**です。pip インストールや外部取得が必要なら Settings から有効化します（要電話認証）。
+- **Save Version** で実行結果ごとスナップショットが保存され、後から再現・共有できます。
+
+## 次のステップ
+
+次は、コンペページの構成と「提出（submission）」の仕組みを詳しく見ます。

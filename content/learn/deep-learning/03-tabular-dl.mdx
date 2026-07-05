@@ -1,0 +1,68 @@
+---
+title: 表形式データの DL
+description: MLP と Entity Embedding でカテゴリ変数を扱う方法、表形式で DL が効く場面を学びます。
+---
+
+## 表形式では GBDT が基本
+
+まず前提として、**表形式データでは [[勾配ブースティング（GBDT）]] が依然として強力**です。
+DL を持ち出す前に、LightGBM 等のベースラインを固めるのが定石です。
+
+それでも DL が活きる場面があります。
+
+- 高カーディナリティのカテゴリが多い（Entity Embedding が効く）
+- 画像/テキスト等と表データを**同時に**学習したい（マルチモーダル）
+- アンサンブルの**多様性**を増やしたい（GBDT と相関の低いモデル）
+
+## Entity Embedding
+
+カテゴリ変数を One-Hot ではなく、**学習可能な密ベクトル（埋め込み）**で表現します。
+カテゴリ間の関係を学習でき、高カーディナリティでも扱いやすくなります。
+
+```python
+import torch.nn as nn
+
+class TabularNet(nn.Module):
+    def __init__(self, n_categories, emb_dim, n_numeric):
+        super().__init__()
+        self.emb = nn.Embedding(n_categories, emb_dim)   # カテゴリ → ベクトル
+        self.mlp = nn.Sequential(
+            nn.Linear(emb_dim + n_numeric, 128), nn.ReLU(), nn.Dropout(0.2),
+            nn.Linear(128, 1),
+        )
+    def forward(self, cat_idx, num):
+        x = torch.cat([self.emb(cat_idx), num], dim=1)
+        return self.mlp(x)
+```
+
+数値特徴は [[標準化]] してから入力すると学習が安定します。
+
+<Callout type="tip">
+	表形式 DL は GBDT を「置き換える」より、**アンサンブルの一員**として価値が出ることが多いです。
+	GBDT と予測の相関が低ければ、混ぜてスコアが伸びます。
+</Callout>
+
+<Callout type="warning">
+	DL は GBDT より前処理（[[標準化]]・欠損処理・エンコード）の影響を強く受け、過学習もしやすいです。
+	[[交差検証]]で必ず効果を確認してから採用しましょう。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 理解度チェック
+
+<Quiz
+	id="l7-03"
+	question="表形式データで高カーディナリティのカテゴリ変数を DL で扱う代表的手法は？"
+	options={[
+		"すべて One-Hot 化して大量の列にする",
+		"Entity Embedding（学習可能な密ベクトルで表現）",
+		"カテゴリ列を削除する",
+	]}
+	answer={1}
+	explanation="Entity Embedding はカテゴリを学習可能なベクトルで表し、高カーディナリティでも関係を学べます。One-Hot は列が爆発します。"
+/>
+
+## 次のステップ
+
+次は画像コンペの基礎、CNN（畳み込み・プーリング）を学びます。

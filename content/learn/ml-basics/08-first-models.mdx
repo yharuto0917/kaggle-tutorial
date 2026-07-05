@@ -1,0 +1,87 @@
+---
+title: 最初のモデル — 線形/ロジスティック回帰・決定木
+description: 基本となる線形回帰・ロジスティック回帰・決定木の特徴を理解し、Titanic でベースラインを作ります。
+---
+
+## 3 つの基本モデル
+
+| モデル                     | タスク    | 特徴                                                   |
+| -------------------------- | --------- | ------------------------------------------------------ |
+| **[[線形回帰]]**           | 回帰      | 特徴量の線形結合で連続値を予測。解釈しやすい           |
+| **[[ロジスティック回帰]]** | 分類      | 線形結合を確率に変換。二値分類の定番ベースライン       |
+| **[[決定木]]**             | 回帰/分類 | 条件分岐で予測。非線形を扱えるが単体では過学習しやすい |
+
+まずはシンプルなモデルで**ベースライン**を作り、以降の改善の基準にします。
+
+## Titanic でベースラインを作る
+
+```python
+import pandas as pd
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+
+df = pd.read_csv("/kaggle/input/titanic/train.csv")
+features = ["Pclass", "Age", "SibSp", "Parch", "Fare"]
+X = df[features]
+y = df["Survived"]
+
+pipe = Pipeline([
+    ("imputer", SimpleImputer(strategy="median")),
+    ("scaler", StandardScaler()),
+    ("model", LogisticRegression(max_iter=1000)),
+])
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+scores = cross_val_score(pipe, X, y, cv=cv, scoring="accuracy")
+print(f"CV accuracy: {scores.mean():.4f} +/- {scores.std():.4f}")
+```
+
+## 決定木と過学習
+
+[[決定木]]は木を深くするほど訓練データに適合しますが、深すぎると[[過学習]]します。
+`max_depth` などの[[ハイパーパラメータ]]で複雑さを抑えるのが基本です。
+
+```python
+from sklearn.tree import DecisionTreeClassifier
+
+tree = DecisionTreeClassifier(max_depth=4, random_state=42)
+```
+
+<Callout type="tip">
+	決定木は単体では弱めですが、これを多数束ねた[[ランダムフォレスト]]や[[勾配ブースティング]]
+	（次トラック L5）が、表形式コンペの主力になります。今回はその土台を作りました。
+</Callout>
+
+<RunLinks
+	colab="https://colab.research.google.com/"
+	kaggle="https://www.kaggle.com/competitions/titanic"
+/>
+
+## 理解度チェック
+
+<Quiz
+	id="ml2-08"
+	question="決定木の max_depth を非常に大きくするとどうなりやすい？"
+	options={[
+		"未学習になり訓練スコアも下がる",
+		"過学習し、検証スコアが訓練スコアより大きく下がる",
+		"汎化性能が必ず上がる",
+	]}
+	answer={1}
+	explanation="木を深くするほど訓練データに適合し、過学習しやすくなります。max_depth などで複雑さを抑えます。"
+/>
+
+## このトラックのまとめ
+
+- 機械学習はデータから規則性を学ぶ技術で、Kaggle の中心は教師あり学習
+- 目的変数の型でタスク（回帰/分類）と評価指標が決まる
+- 汎化を測るためにデータを分割し、交差検証で安定評価する
+- 指標はコンペに合わせて選び、Pipeline でリークなく前処理する
+
+## 次のステップ
+
+次トラック（L3）では、Titanic / House Prices を題材に、ここまでの基礎を使って
+**実際のコンペに提出するまで**の流れを体験します。

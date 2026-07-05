@@ -1,0 +1,81 @@
+---
+title: stacking — out-of-fold 予測とメタモデル
+description: OOF 予測を特徴量としてメタモデルで統合する stacking の仕組みと、正しい組み方を学びます。
+---
+
+## stacking とは
+
+[[スタッキング]]は、複数モデル（ベースモデル）の予測を**入力特徴量**として、
+別のモデル（メタモデル）に学習させて統合する手法です。
+加重平均より柔軟に、モデル間の関係を学習できます。
+
+```text
+ベースモデル群 → 各 OOF 予測 → それを特徴量にメタモデルを学習 → 最終予測
+```
+
+## 鍵は out-of-fold 予測
+
+メタモデルの学習データは、ベースモデルの **[[OOF]]（out-of-fold）予測**で作ります。
+各サンプルの予測は、**そのサンプルを含まない** fold で学習したモデルから得るため、リークしません。
+
+```python
+import numpy as np
+from sklearn.model_selection import StratifiedKFold
+
+def make_oof(model_fn, X, y, X_test, n_splits=5):
+    oof = np.zeros(len(X))
+    test_pred = np.zeros(len(X_test))
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+    for tr, va in skf.split(X, y):
+        model = model_fn()
+        model.fit(X[tr], y[tr])
+        oof[va] = model.predict_proba(X[va])[:, 1]      # 検証側 = OOF
+        test_pred += model.predict_proba(X_test)[:, 1] / n_splits
+    return oof, test_pred
+```
+
+## メタモデルの学習
+
+各ベースモデルの OOF を列に並べ、メタモデル（よく使うのは単純な線形/ロジスティック回帰）を学習します。
+
+```python
+oof_lgbm, test_lgbm = make_oof(make_lgbm, X, y, X_test)
+oof_xgb, test_xgb = make_oof(make_xgb, X, y, X_test)
+
+meta_X = np.column_stack([oof_lgbm, oof_xgb])          # メタ特徴量
+meta_test = np.column_stack([test_lgbm, test_xgb])
+
+from sklearn.linear_model import LogisticRegression
+meta = LogisticRegression().fit(meta_X, y)
+final = meta.predict_proba(meta_test)[:, 1]
+```
+
+<Callout type="warning">
+	メタモデルにベースモデルの **訓練データへの予測（in-fold）**
+	を使うと、強烈な[[データリーク]]になります。 必ず OOF
+	を使い、メタモデルの評価も交差検証で行います。
+</Callout>
+
+<Callout type="tip">
+	メタモデルは複雑にしすぎないのが定石です。線形モデルやリッジが安定し、過学習を抑えられます。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 理解度チェック
+
+<Quiz
+	id="l6-03"
+	question="stacking でメタモデルの入力に使うべきベースモデルの予測は？"
+	options={[
+		"訓練データに対する予測（in-fold）",
+		"out-of-fold（OOF）予測",
+		"テストデータへの予測のみ",
+	]}
+	answer={1}
+	explanation="各サンプルを含まない fold で学習したモデルの予測（OOF）を使うことでリークを防ぎます。in-fold 予測はリークします。"
+/>
+
+## 次のステップ
+
+次は、stacking を多段にする際の注意点とリーク防止を学びます。

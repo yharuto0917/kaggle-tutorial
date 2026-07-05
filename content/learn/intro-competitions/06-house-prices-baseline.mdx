@@ -1,0 +1,81 @@
+---
+title: 【House Prices】欠損処理・特徴量・回帰モデル・提出
+description: 多数の欠損とカテゴリを処理し、回帰モデルで House Prices の submission を作って提出します。
+---
+
+## 多くの欠損とカテゴリに対処する
+
+House Prices は特徴量が約 80 と多く、欠損もカテゴリも多数あります。
+`Pipeline` と `ColumnTransformer` でまとめて処理すると、[[データリーク]]なく安全に扱えます。
+
+```python
+import numpy as np
+import pandas as pd
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+
+train = pd.read_csv("/kaggle/input/house-prices-advanced-regression-techniques/train.csv")
+test = pd.read_csv("/kaggle/input/house-prices-advanced-regression-techniques/test.csv")
+
+y = np.log1p(train["SalePrice"])
+X = train.drop(columns=["Id", "SalePrice"])
+X_test = test.drop(columns=["Id"])
+
+num_cols = X.select_dtypes("number").columns
+cat_cols = X.select_dtypes("object").columns
+
+pre = ColumnTransformer([
+    ("num", SimpleImputer(strategy="median"), num_cols),
+    ("cat", Pipeline([
+        ("imp", SimpleImputer(strategy="most_frequent")),
+        ("oh", OneHotEncoder(handle_unknown="ignore")),
+    ]), cat_cols),
+])
+```
+
+`handle_unknown="ignore"` で、test にしかない水準が来ても落ちないようにします。
+
+## 回帰モデルで学習・提出
+
+```python
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.model_selection import cross_val_score
+
+model = Pipeline([("pre", pre), ("gbr", GradientBoostingRegressor(random_state=42))])
+
+# 評価指標（log スケールの RMSE）で CV
+scores = cross_val_score(model, X, y, cv=5, scoring="neg_root_mean_squared_error")
+print(f"CV RMSE(log): {-scores.mean():.4f}")
+
+model.fit(X, y)
+pred = np.expm1(model.predict(X_test))   # expm1 で価格スケールへ戻す
+
+submission = pd.DataFrame({"Id": test["Id"], "SalePrice": pred})
+submission.to_csv("submission.csv", index=False)
+```
+
+<Callout type="tip">
+	目的変数を対数化したので、CV も log スケールの RMSE で測るとコンペの評価指標と一致します。
+	`scoring` をコンペ指標にそろえるのが、CV を信頼する近道です。
+</Callout>
+
+<RunLinks
+	colab="https://colab.research.google.com/"
+	kaggle="https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques"
+/>
+
+## 理解度チェック
+
+<Quiz
+	id="l3-06"
+	question="test にしか現れないカテゴリ水準があってもエラーで落ちないようにする OneHotEncoder の設定は？"
+	options={['handle_unknown="error"', 'handle_unknown="ignore"', "設定は不要（自動で無視される）"]}
+	answer={1}
+	explanation='handle_unknown="ignore" にすると、学習時に無かった水準が来ても全て 0 として扱い、エラーになりません。'
+/>
+
+## 次のステップ
+
+次は特徴量を強化し、複数モデルを束ねるアンサンブルの入口に進みます。

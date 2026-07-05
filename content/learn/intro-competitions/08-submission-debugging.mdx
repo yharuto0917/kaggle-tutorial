@@ -1,0 +1,79 @@
+---
+title: 提出フロー完全理解とデバッグ
+description: submission の作り方を総まとめし、形式エラーの典型と対処法を身につけます。
+---
+
+## 提出フローの全体像
+
+```text
+sample_submission.csv の形式を確認
+   ↓
+予測を sample と同じ列・行数で作る
+   ↓
+submission.csv を書き出す（index=False）
+   ↓
+Submit Predictions でアップロード
+   ↓
+Public LB のスコアを確認 → 改善ループ
+```
+
+**`sample_submission.csv` を正とする**のが最重要です。列名・行数・ID の順序をこれに合わせます。
+
+```python
+sample = pd.read_csv("/kaggle/input/titanic/gender_submission.csv")
+sample.columns       # 期待される列名
+sample.shape         # 期待される行数
+```
+
+## よくある形式エラーと対処
+
+| 症状                | 原因                                    | 対処                                                 |
+| ------------------- | --------------------------------------- | ---------------------------------------------------- |
+| 列が違う / 余分な列 | `index=False` 忘れ・列名ミス            | `to_csv(..., index=False)`、列名を sample に合わせる |
+| 行数が合わない      | test の一部を落とした・欠損で行が消えた | test 全行に予測を出す。欠損補完で行を保つ            |
+| ID がずれている     | 並べ替え・shuffle した                  | 予測は **test の順序のまま** ID と対応させる         |
+| 値が NaN            | 予測や逆変換で欠損が発生                | NaN を埋める。`expm1` 等の逆変換忘れに注意           |
+| スコアが異常に低い  | 目的変数の逆変換忘れ・指標違い          | 対数変換は `expm1` で戻す。指標を再確認              |
+
+<Callout type="warning">
+	提出前に `submission.isnull().sum()`（NaN チェック）と `submission.shape`（行数チェック）、
+	`submission.head()`（列名・値の確認）を**必ず**実行する習慣をつけましょう。多くのエラーはここで防げます。
+</Callout>
+
+## 提出前チェックリスト
+
+```python
+assert list(submission.columns) == list(sample.columns)   # 列名一致
+assert len(submission) == len(sample)                     # 行数一致
+assert submission.isnull().sum().sum() == 0               # NaN なし
+```
+
+この 3 行を最後に走らせるだけで、形式エラーの大半を未然に防げます。
+
+## 理解度チェック
+
+<Quiz
+	id="l3-08"
+	question="提出ファイルの形式を合わせるとき、何を「正」とすべき？"
+	options={[
+		"自分の train データの列",
+		"コンペが配布する sample_submission（列名・行数・ID の順序）",
+		"その時のモデルの出力",
+	]}
+	answer={1}
+	explanation="sample_submission を正として列名・行数・ID をそろえるのが鉄則です。多くの形式エラーはこれで防げます。"
+/>
+
+## このトラックのまとめ
+
+- 入門コンペは「まず提出 → CV を信じて小さく改善」のループで進める
+- Titanic（分類）：性別・クラスを軸に特徴量を足し、Stratified K-Fold で改善
+- House Prices（回帰）：歪んだ目的変数は[[対数変換]]し、`expm1` で戻して提出
+- submission は `sample_submission` を正とし、列・行・NaN を提出前にチェック
+
+関連コンペページ：[Titanic 解説](/competitions/titanic) ／ [House Prices 解説](/competitions/house-prices)
+
+## 次のステップ
+
+次トラック（L4）では、[[特徴量エンジニアリング]]と検証戦略を深掘りし、
+ベースラインからさらにスコアを伸ばす技術を学びます。

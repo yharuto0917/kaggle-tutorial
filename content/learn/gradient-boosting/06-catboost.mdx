@@ -1,0 +1,68 @@
+---
+title: CatBoost 実践
+description: カテゴリ変数を自動処理し、ordered boosting でリークを抑える CatBoost の使い方を学びます。
+---
+
+## CatBoost とは
+
+[[CatBoost]]（Yandex 製）は、**カテゴリ変数の扱いに優れた** [[勾配ブースティング（GBDT）]] 実装です。
+前処理が少なく、デフォルト設定でも強いのが特徴で、カテゴリの多いデータで威力を発揮します。
+
+## カテゴリ変数の自動処理
+
+[[ラベルエンコーディング]]や[[ターゲットエンコーディング]]を手で書かなくても、
+列を指定するだけで CatBoost が内部で適切に数値化します。
+
+```python
+from catboost import CatBoostClassifier
+
+cat_features = ["Sex", "Embarked", "Pclass"]   # カテゴリ列を指定するだけ
+
+model = CatBoostClassifier(
+    iterations=3000,
+    learning_rate=0.05,
+    depth=6,
+    l2_leaf_reg=3.0,
+    eval_metric="AUC",
+    random_seed=42,
+    verbose=0,
+)
+model.fit(
+    X_tr, y_tr,
+    cat_features=cat_features,
+    eval_set=(X_va, y_va),
+    early_stopping_rounds=100,
+)
+```
+
+## ordered boosting でリークを抑える
+
+CatBoost の[[ターゲットエンコーディング]]は、各サンプルの統計量を
+**そのサンプルより前の行だけ**から計算する「ordered」方式を使い、
+通常のターゲットエンコードで起きがちな[[データリーク]]を構造的に抑えます。
+
+<Callout type="tip">
+	CatBoost は欠損やカテゴリをそのまま渡せるため、**前処理を最小化して素早くベースライン**を
+	作れます。カテゴリが多いコンペではまず CatBoost を試す価値があります。
+</Callout>
+
+<Callout type="note">
+	3 つの GBDT はパラメータ名が少しずつ違います（木の深さ＝XGBoost/CatBoost は depth、 LightGBM は
+	num_leaves など）。次のレッスンで対応関係を整理します。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 理解度チェック
+
+<Quiz
+	id="l5-06"
+	question="CatBoost が「ordered boosting」で狙っているのは主に何の抑制？"
+	options={["学習速度の低下", "ターゲット統計量によるデータリーク", "メモリ使用量"]}
+	answer={1}
+	explanation="各サンプルより前の行だけで統計量を計算することで、ターゲットエンコーディングで起きがちなデータリークを構造的に抑えます。"
+/>
+
+## 次のステップ
+
+次は、3 大 GBDT の比較・使い分けと、共通する重要パラメータを整理します。

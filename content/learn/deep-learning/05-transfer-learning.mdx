@@ -1,0 +1,63 @@
+---
+title: CV II — 転移学習・ファインチューニング
+description: 事前学習済みモデル（timm）のファインチューニング、データ拡張、TTA を学びます。
+---
+
+## 転移学習が主流
+
+画像コンペでは、ImageNet 等の大規模データで事前学習済みのモデルを再利用する
+**[[転移学習]]**が標準です。少ないデータでも高精度を出せ、学習も速くなります。
+
+`timm`（PyTorch Image Models）を使うと、最新の事前学習済みモデルを 1 行で呼べます。
+
+```python
+import timm
+import torch.nn as nn
+
+model = timm.create_model("resnet18", pretrained=True, num_classes=n_classes)
+```
+
+## ファインチューニングの進め方
+
+- **全層を微調整**：データが十分にあるときの基本
+- **ヘッドだけ学習 → 段階的に解凍**：データが少ないときに過学習を抑える
+- 事前学習時より**小さい[[学習率]]**を使う（壊さないため）。層ごとに学習率を変える手法もある
+
+```python
+optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4, weight_decay=1e-2)
+```
+
+## データ拡張と TTA
+
+- **[[データ拡張]]**：学習時に反転・回転・切り抜き・色変換などでデータを水増しし[[過学習]]を抑える
+- **TTA（Test Time Augmentation）**：推論時にも拡張した複数版を予測して平均し、精度を底上げする
+
+<Callout type="tip">
+	モデルを大きくするより、**適切な拡張 + 転移学習 + [[交差検証]]**の方が安定して効くことが多いです。
+	まず軽量モデルで CV を固め、その後に大型モデルや TTA を足しましょう。
+</Callout>
+
+<Callout type="warning">
+	検証時のデータ拡張は推論と整合させ、正規化の統計量は学習時と同じものを使います。 ここがずれると CV
+	が当てにならなくなります。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 理解度チェック
+
+<Quiz
+	id="l7-05"
+	question="少量データの画像コンペで高精度を狙う、最も標準的なアプローチは？"
+	options={[
+		"巨大な CNN をゼロから学習する",
+		"事前学習済みモデルを転移学習（ファインチューニング）する",
+		"画像を表形式に変換して線形回帰する",
+	]}
+	answer={1}
+	explanation="事前学習済みモデルの転移学習が標準です。少データ・短時間で高精度を狙え、データ拡張や TTA と組み合わせます。"
+/>
+
+## 次のステップ
+
+次は NLP の基礎、テキスト前処理と古典的手法（BoW/TF-IDF）を学びます。

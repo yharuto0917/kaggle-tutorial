@@ -1,0 +1,83 @@
+---
+title: PyTorch 入門
+description: Tensor・autograd・学習ループ・Dataset/DataLoader という PyTorch の基本要素を学びます。
+---
+
+## Tensor と autograd
+
+PyTorch の中心は `Tensor`（NumPy 配列に似た多次元配列、GPU 対応）と、
+自動微分の **autograd** です。`requires_grad=True` のテンソルに対する計算は記録され、
+`backward()` で勾配が自動計算されます。
+
+```python
+import torch
+
+x = torch.tensor([1.0, 2.0, 3.0], requires_grad=True)
+y = (x ** 2).sum()
+y.backward()
+print(x.grad)   # tensor([2., 4., 6.])  ← dy/dx = 2x
+```
+
+## Dataset と DataLoader
+
+データ供給は `Dataset`（1 件の取り出し方）と `DataLoader`（バッチ化・シャッフル）で行います。
+
+```python
+from torch.utils.data import Dataset, DataLoader
+
+class TableDataset(Dataset):
+    def __init__(self, X, y):
+        self.X = torch.tensor(X, dtype=torch.float32)
+        self.y = torch.tensor(y, dtype=torch.float32)
+    def __len__(self):
+        return len(self.X)
+    def __getitem__(self, i):
+        return self.X[i], self.y[i]
+
+loader = DataLoader(TableDataset(X, y), batch_size=64, shuffle=True)
+```
+
+## 学習ループ
+
+PyTorch では学習ループを自分で書きます。**勾配のゼロ初期化 → 順伝播 → 損失 → 逆伝播 → 更新**が定型です。
+
+```python
+import torch.nn as nn
+
+model = nn.Sequential(nn.Linear(X.shape[1], 64), nn.ReLU(), nn.Linear(64, 1))
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+loss_fn = nn.BCEWithLogitsLoss()
+
+model.train()
+for xb, yb in loader:
+    optimizer.zero_grad()          # 勾配を初期化
+    pred = model(xb).squeeze(1)    # 順伝播
+    loss = loss_fn(pred, yb)       # 損失
+    loss.backward()                # 逆伝播
+    optimizer.step()               # 更新
+```
+
+<Callout type="warning">
+	`optimizer.zero_grad()` を忘れると勾配が蓄積され、学習が壊れます。各ステップの先頭で必ず呼びます。
+	推論時は `model.eval()` と `torch.no_grad()` を使い、Dropout 等を無効化します。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 理解度チェック
+
+<Quiz
+	id="l7-02"
+	question="PyTorch の学習ループで各ステップの先頭に必要な処理は？"
+	options={[
+		"optimizer.zero_grad() で勾配を初期化する",
+		"model.eval() に切り替える",
+		"DataLoader を作り直す",
+	]}
+	answer={0}
+	explanation="勾配は加算されるため、各ステップ先頭で zero_grad() しないと前ステップの勾配が混ざって学習が壊れます。"
+/>
+
+## 次のステップ
+
+次は、表形式データに DL を適用する方法（MLP・Entity Embedding）を学びます。

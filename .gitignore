@@ -41,6 +41,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# fumadocs-mdx 生成物
+/.source
+
+# Pagefind 生成物（build/CI の postbuild で生成）
+/public/pagefind
+
 # OpenNext
 /.open-next
 

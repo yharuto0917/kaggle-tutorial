@@ -1,0 +1,14 @@
+{
+	"title": "特徴量エンジニアリング & 検証戦略",
+	"description": "テーブルデータのスコアを左右する特徴量エンジニアリングと、信頼できる検証戦略を学ぶトラック",
+	"pages": [
+		"01-overview",
+		"02-categorical-encoding",
+		"03-numeric-transforms",
+		"04-datetime-aggregation",
+		"05-text-high-cardinality",
+		"06-feature-selection",
+		"07-validation-strategy",
+		"08-cv-lb-leakage"
+	]
+}

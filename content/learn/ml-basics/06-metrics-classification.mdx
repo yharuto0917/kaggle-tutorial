@@ -1,0 +1,70 @@
+---
+title: 評価指標 II（分類）
+description: 混同行列を起点に、Accuracy・Precision・Recall・F1・ROC-AUC・LogLoss を理解します。
+---
+
+## すべては混同行列から
+
+分類の指標は[[混同行列]]（予測と正解の組み合わせ）から導かれます。
+
+|                | 予測：陽性   | 予測：陰性   |
+| -------------- | ------------ | ------------ |
+| **実際：陽性** | TP（真陽性） | FN（偽陰性） |
+| **実際：陰性** | FP（偽陽性） | TN（真陰性） |
+
+## Accuracy / Precision / Recall / F1
+
+[[正解率]]（Accuracy）は全体のうち当たった割合。ただし**不均衡データでは誤解を招きます**
+（99% が陰性なら「全部陰性」で 99% になる）。
+
+$$
+\mathrm{Precision} = \frac{TP}{TP + FP}, \quad \mathrm{Recall} = \frac{TP}{TP + FN}
+$$
+
+- [[適合率]]（Precision）：陽性と予測したうち本当に陽性だった割合（誤検知の少なさ）
+- [[再現率]]（Recall）：実際の陽性を取りこぼさなかった割合（見逃しの少なさ）
+
+両者はトレードオフの関係にあり、その調和平均が [[F1]] スコアです。
+
+$$
+F_1 = \frac{2 \cdot \mathrm{Precision} \cdot \mathrm{Recall}}{\mathrm{Precision} + \mathrm{Recall}}
+$$
+
+## ROC-AUC と LogLoss
+
+- [[AUC]]（ROC-AUC）：閾値に依存せず、陽性を陰性より高くスコアリングできる確率。順位付け性能を表す。
+- [[LogLoss]]：予測**確率**の良さを測る。自信を持って外すほど大きく罰せられる。
+
+$$
+\mathrm{LogLoss} = -\frac{1}{n} \sum_{i=1}^{n} \left[ y_i \log p_i + (1 - y_i) \log (1 - p_i) \right]
+$$
+
+```python
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, log_loss
+
+acc = accuracy_score(y_true, y_pred)
+f1 = f1_score(y_true, y_pred)
+auc = roc_auc_score(y_true, y_proba)   # 確率を渡す
+ll = log_loss(y_true, y_proba)         # 確率を渡す
+```
+
+<Callout type="warning">
+	AUC と LogLoss は**予測ラベルではなく確率**で計算します。`predict` ではなく `predict_proba`
+	の出力を渡しましょう。
+</Callout>
+
+<RunLinks colab="https://colab.research.google.com/" kaggle="https://www.kaggle.com/code" />
+
+## 理解度チェック
+
+<Quiz
+	id="ml2-06"
+	question="陽性がごく少ない不均衡データで、「見逃し（陽性の取りこぼし）の少なさ」を測る指標は？"
+	options={["適合率（Precision）", "再現率（Recall）", "正解率（Accuracy）"]}
+	answer={1}
+	explanation="実際の陽性をどれだけ拾えたかが再現率（Recall）です。Precision は誤検知の少なさ、Accuracy は不均衡だと誤解を招きます。"
+/>
+
+## 次のステップ
+
+次は、これらのモデルを実際に動かす **scikit-learn の基本 API** を学びます。

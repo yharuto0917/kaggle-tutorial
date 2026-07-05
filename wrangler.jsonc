@@ -11,31 +11,39 @@
 	"name": "kaggle-tutorial",
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2026-06-15",
-	"compatibility_flags": [
-		"nodejs_compat",
-		"global_fetch_strictly_public"
-	],
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {
 		"binding": "ASSETS",
-		"directory": ".open-next/assets"
+		"directory": ".open-next/assets",
 	},
 	"images": {
 		// Enable image optimization
 		// see https://opennext.js.org/cloudflare/howtos/image
-		"binding": "IMAGES"
+		"binding": "IMAGES",
 	},
 	"services": [
 		{
 			// Self-reference service binding, the service name must match the worker name
 			// see https://opennext.js.org/cloudflare/caching
 			"binding": "WORKER_SELF_REFERENCE",
-			"service": "kaggle-tutorial"
-		}
+			"service": "kaggle-tutorial",
+		},
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "kaggle_tutorial_db",
+			// `wrangler d1 create kaggle_tutorial_db` の出力 ID（本番）。
+			// ローカル開発は --local の隔離 SQLite を使うため本番へは接続しない。
+			"database_id": "31e5488b-40e4-43cf-8bbb-2df68e1f38c6",
+			// drizzle-kit の out と一致させる（生成 SQL を wrangler で適用）。
+			"migrations_dir": "drizzle",
+		},
 	],
 	"observability": {
-		"enabled": true
+		"enabled": true,
 	},
-	"upload_source_maps": true
+	"upload_source_maps": true,
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

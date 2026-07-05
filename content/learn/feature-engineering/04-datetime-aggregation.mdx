@@ -1,0 +1,72 @@
+---
+title: 日時・周期・地理・集約特徴量
+description: 日時の分解、周期性の表現、地理特徴、グループ集約特徴の作り方とリーク回避を学びます。
+---
+
+## 日時特徴の分解
+
+日時はそのままでは扱いにくいので、意味のある成分に分解します。
+
+```python
+dt = pd.to_datetime(df["timestamp"])
+df["year"] = dt.dt.year
+df["month"] = dt.dt.month
+df["dayofweek"] = dt.dt.dayofweek
+df["hour"] = dt.dt.hour
+df["is_weekend"] = (dt.dt.dayofweek >= 5).astype(int)
+```
+
+## 周期性は sin / cos で表現
+
+時刻・曜日・月などは循環します（23 時と 0 時は隣）。
+**周期エンコーディング**で「環状の近さ」を表現できます。
+
+```python
+import numpy as np
+df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
+df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
+```
+
+## 地理特徴
+
+緯度経度からは、距離や地域の集約特徴が作れます。
+
+```python
+# 基準点からの距離（簡易）
+df["dist_center"] = np.sqrt((df["lat"] - lat0) ** 2 + (df["lon"] - lon0) ** 2)
+```
+
+## グループ集約特徴
+
+「あるカテゴリ内での統計量」は強力な特徴です（例：ユーザーごとの平均購入額）。
+
+```python
+# 客室クラスごとの平均運賃を各行に展開
+df["fare_mean_by_pclass"] = df.groupby("Pclass")["Fare"].transform("mean")
+df["fare_diff"] = df["Fare"] - df["fare_mean_by_pclass"]
+```
+
+`transform` は元の行数を保ったまま集約値を返すので、特徴量生成に便利です。
+
+<Callout type="warning">
+	集約に目的変数を混ぜると[[ターゲットエンコーディング]]と同じく[[データリーク]]になります。
+	また時系列データでは、**未来の行を含めて集約しない**（過去だけで集約する）よう注意します。
+</Callout>
+
+## 理解度チェック
+
+<Quiz
+	id="l4-04"
+	question="「時刻（hour）」のような循環する特徴を、環状の近さを保って表現する方法は？"
+	options={[
+		"そのまま整数で渡す",
+		"sin / cos の 2 成分に変換する（周期エンコーディング）",
+		"標準化する",
+	]}
+	answer={1}
+	explanation="0 時と 23 時が近いことを表すには sin/cos の周期エンコーディングが有効です。整数のままだと環状の近さが失われます。"
+/>
+
+## 次のステップ
+
+次は、テキストや高カーディナリティなカテゴリからの高度な特徴（count / TF-IDF 入口）を学びます。

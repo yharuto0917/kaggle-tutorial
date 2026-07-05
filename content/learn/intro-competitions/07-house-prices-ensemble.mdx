@@ -1,0 +1,75 @@
+---
+title: 【House Prices】特徴量強化とアンサンブルの入口
+description: 特徴量を強化し、複数モデルの予測を平均するブレンディングでスコアを底上げします。
+---
+
+## 特徴量を強化する
+
+ドメイン知識から、効きそうな特徴を作ります。House Prices の定番は面積系の合算です。
+
+```python
+def add_features(df):
+    df = df.copy()
+    # 総面積（地下 + 1 階 + 2 階）
+    df["TotalSF"] = df["TotalBsmtSF"].fillna(0) + df["1stFlrSF"] + df["2ndFlrSF"]
+    # 築年・改装からの経過
+    df["Age"] = df["YrSold"] - df["YearBuilt"]
+    df["RemodAge"] = df["YrSold"] - df["YearRemodAdd"]
+    return df
+```
+
+歪んだ数値特徴は[[対数変換]]すると線形モデルに効くことがあります。
+
+## アンサンブルの入口：ブレンディング
+
+異なる性質のモデルの予測を平均すると、単体より安定して精度が上がることがよくあります。
+最も簡単な[[アンサンブル学習]]が、予測値の加重平均＝[[ブレンディング]]です。
+
+```python
+import numpy as np
+from sklearn.linear_model import Ridge
+from sklearn.ensemble import GradientBoostingRegressor
+
+# それぞれ学習済みとする（前処理 Pipeline 込み）
+pred_ridge = np.expm1(ridge.predict(X_test))   # 線形モデル
+pred_gbr = np.expm1(gbr.predict(X_test))        # 勾配ブースティング
+
+# 単純平均でブレンド
+pred = 0.5 * pred_ridge + 0.5 * pred_gbr
+```
+
+線形モデル（[[ロジスティック回帰]]の回帰版 Ridge）と[[勾配ブースティング]]は得意・不得意が異なるため、
+組み合わせると弱点を補い合えます。
+
+<Callout type="tip">
+	ブレンドの重みは[[交差検証]]の [[OOF]] 予測で決めると過学習しにくくなります。 まずは 0.5 : 0.5
+	から試し、CV を見ながら調整しましょう。
+</Callout>
+
+<Callout type="note">
+	本格的な[[スタッキング]]（メタモデルで統合）や[[勾配ブースティング（GBDT）]]の本命 （LightGBM /
+	XGBoost）は、次トラック L5・L6 で詳しく扱います。
+</Callout>
+
+<RunLinks
+	colab="https://colab.research.google.com/"
+	kaggle="https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques"
+/>
+
+## 理解度チェック
+
+<Quiz
+	id="l3-07"
+	question="性質の異なる複数モデルの予測を平均（ブレンド）すると効果が出やすいのはなぜ？"
+	options={[
+		"必ず一番強いモデルと同じ結果になるから",
+		"モデルごとの得意・不得意（誤りの傾向）が異なり、弱点を補い合えるから",
+		"計算が速くなるから",
+	]}
+	answer={1}
+	explanation="誤りの傾向が異なるモデルを混ぜると、互いの弱点を打ち消し合い、単体より安定して精度が上がりやすくなります。"
+/>
+
+## 次のステップ
+
+最後に、提出フローの完全理解と、よくある submission 形式エラーのデバッグを学びます。
