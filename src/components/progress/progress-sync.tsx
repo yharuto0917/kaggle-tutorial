@@ -16,7 +16,10 @@ const SYNC_TTL_MS = 5 * 60_000;
 
 function shouldSync(): boolean {
 	try {
-		const last = Number(window.localStorage.getItem(SYNC_MARKER_KEY) ?? 0);
+		// マーカー未設定や非数値（外部改変・旧版の書き込み等）は NaN になりうる。
+		// NaN のまま比較すると常に false になり同期が永久に止まるため、その場合は同期する。
+		const last = Number(window.localStorage.getItem(SYNC_MARKER_KEY));
+		if (!Number.isFinite(last)) return true;
 		return Date.now() - last > SYNC_TTL_MS;
 	} catch {
 		return true;
@@ -31,24 +34,53 @@ function markSynced(): void {
 	}
 }
 
-async function postProgress(lessonId: string, status: string, explicit: boolean): Promise<void> {
+/** kt_uid Cookie を確立するまで後続リクエストを待たせるゲート（初回訪問の UID 分裂対策）。 */
+let cookieReady: Promise<void> | null = null;
+
+/**
+ * kt_uid Cookie 未発行の状態で複数の API リクエストを並行させると、サーバーの
+ * ミドルウェアがリクエストごとに別々の UUID を発行し、進捗が別ユーザーへ分裂する
+ * （例: 初回訪問時にマウント同期の GET とレッスンの write-through POST が同時発火）。
+ * 最初の 1 本が完了して Cookie が確立するまで後続を待たせることでこれを防ぐ。
+ */
+function withSession<T>(send: () => Promise<T>): Promise<T> {
+	if (cookieReady) return cookieReady.then(send);
+	const first = send();
+	cookieReady = first.then(
+		() => undefined,
+		() => undefined,
+	);
+	return first;
+}
+
+/** 進捗 1 件を D1 へ送る。best-effort（例外は握りつぶす）。成功可否を返す。 */
+async function postProgress(lessonId: string, status: string, explicit: boolean): Promise<boolean> {
 	try {
-		await apiClient.api.progress.$post({ json: { lessonId, status, explicit } });
+		const res = await withSession(() =>
+			apiClient.api.progress.$post({ json: { lessonId, status, explicit } }),
+		);
+		return res.ok;
 	} catch {
 		// 同期は best-effort。失敗してもローカルは保持される。
+		return false;
 	}
 }
 
+/** クイズ結果 1 件を D1 へ送る。best-effort（例外は握りつぶす）。成功可否を返す。 */
 async function postQuiz(
 	quizId: string,
 	correct: boolean,
 	selected: number[],
 	answeredAt: number,
-): Promise<void> {
+): Promise<boolean> {
 	try {
-		await apiClient.api.quiz.$post({ json: { quizId, correct, selected, answeredAt } });
+		const res = await withSession(() =>
+			apiClient.api.quiz.$post({ json: { quizId, correct, selected, answeredAt } }),
+		);
+		return res.ok;
 	} catch {
 		// 同期は best-effort。失敗してもローカルは保持される。
+		return false;
 	}
 }
 
@@ -63,7 +95,8 @@ async function syncProgress(): Promise<void> {
 	let pRows: unknown;
 	let qRows: unknown;
 	try {
-		const p = await apiClient.api.progress.$get();
+		// 最初の GET を withSession に通し、これで Cookie を確立してから後続を送る。
+		const p = await withSession(() => apiClient.api.progress.$get());
 		if (!p.ok) return;
 		pRows = await p.json();
 		const q = await apiClient.api.quiz.$get();
@@ -78,7 +111,7 @@ async function syncProgress(): Promise<void> {
 	const mergedP = mergeProgress(getLessonProgressMap(), remoteP);
 	const mergedQ = mergeQuiz(getAllQuizResults(), remoteQ);
 
-	const pushes: Promise<void>[] = [];
+	const pushes: Promise<boolean>[] = [];
 	for (const [lessonId, v] of Object.entries(mergedP)) {
 		const r = remoteP[lessonId];
 		if (!r || r.status !== v.status) pushes.push(postProgress(lessonId, v.status, false));
@@ -89,12 +122,17 @@ async function syncProgress(): Promise<void> {
 			pushes.push(postQuiz(quizId, v.correct, v.selected, v.answeredAt));
 		}
 	}
-	await Promise.all(pushes);
+	const pushed = await Promise.all(pushes);
 
 	// ローカルを D1 のミラーにする（詳細なし通知 → write-through は反応しない）。
-	replaceLessonProgress(mergedP);
-	replaceAllQuizResults(mergedQ);
-	markSynced();
+	// push 待ちの間にユーザーが行った変更（例: 完了クリック）を巻き戻さないよう、
+	// 書き戻す直前に最新のローカルと再マージする（完了優先なので降格は起きない）。
+	replaceLessonProgress(mergeProgress(getLessonProgressMap(), remoteP));
+	replaceAllQuizResults(mergeQuiz(getAllQuizResults(), remoteQ));
+
+	// push が全て成功したときだけ同期済みマーカーを更新する。1 件でも失敗していれば
+	// マーカーを据え置き、次回マウントで差分の再送を試みる（best-effort の取りこぼし対策）。
+	if (pushed.every(Boolean)) markSynced();
 }
 
 /**
@@ -114,8 +152,9 @@ export function ProgressSync() {
 				| { lessonId: string; status: string; source: "user" | "visit" }
 				| undefined;
 			if (!d) return;
-			// 暗黙の訪問記録（"visit"）は D1 の completed を降格しない（サーバー側でガード）。
-			void postProgress(d.lessonId, d.status, d.source !== "visit");
+			// 明示操作（"user"）のみを explicit として送る。source 欠落・不明時は暗黙扱い
+			// （explicit=false）にフォールバックし、D1 の completed を降格させない（fail-safe）。
+			void postProgress(d.lessonId, d.status, d.source === "user");
 		}
 		function onQuiz(e: Event) {
 			const d = (e as CustomEvent).detail as

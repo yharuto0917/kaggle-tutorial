@@ -98,4 +98,43 @@ describe("<ProgressSync>（副作用）", () => {
 			explicit: false,
 		});
 	});
+
+	it("source 欠落の PROGRESS_EVENT は暗黙扱い（explicit: false）で POST される", async () => {
+		// source を持たないイベントに completed 降格権限を与えない fail-safe を検証する。
+		window.localStorage.setItem("kt:last-sync", String(Date.now()));
+		const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
+			async () => jsonResponse({}),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<ProgressSync />);
+
+		window.dispatchEvent(
+			new CustomEvent(PROGRESS_EVENT, {
+				detail: { lessonId: "/learn/x", status: "in-progress" },
+			}),
+		);
+
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+		const [, init] = fetchMock.mock.calls[0];
+		expect(JSON.parse(init?.body as string)).toEqual({
+			lessonId: "/learn/x",
+			status: "in-progress",
+			explicit: false,
+		});
+	});
+
+	it("kt:last-sync が非数値でもマウント同期する（NaN で永久停止しない）", async () => {
+		// 非数値マーカーで shouldSync が NaN 比較になり同期が永久停止する退行を防ぐ。
+		window.localStorage.setItem("kt:last-sync", "garbage");
+		const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
+			async () => jsonResponse([]),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<ProgressSync />);
+
+		await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+		expect(String(fetchMock.mock.calls[0][0])).toContain("/api/progress");
+	});
 });
