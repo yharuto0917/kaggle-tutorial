@@ -3,9 +3,22 @@
  * D1 から取得した行を入力に、UI から独立してテストできる形で集計する。
  */
 
+import type { NavGroup } from "@/lib/nav";
+
 export type TrackInput = { title: string; urls: string[] };
 
 export type TrackProgress = { title: string; total: number; done: number };
+
+/**
+ * ナビゲーショングループを trackProgress の入力へ変換する。
+ * 空グループは除外し、無題グループは「その他」にフォールバックする。
+ * /learn（LearnProgress）と /dashboard の両方から使い、変換規則を一箇所に集約する。
+ */
+export function navGroupsToTracks(groups: NavGroup[]): TrackInput[] {
+	return groups
+		.filter((group) => group.items.length > 0)
+		.map((group) => ({ title: group.title ?? "その他", urls: group.items.map((i) => i.url) }));
+}
 
 /** トラック別・全体の完了数を集計する。 */
 export function trackProgress(

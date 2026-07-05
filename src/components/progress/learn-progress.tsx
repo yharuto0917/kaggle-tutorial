@@ -1,7 +1,7 @@
 "use client";
 
 import { useProgressMap } from "@/hooks/use-progress";
-import { trackProgress } from "@/lib/dashboard";
+import { navGroupsToTracks, trackProgress } from "@/lib/dashboard";
 import type { NavGroup } from "@/lib/nav";
 import { ProgressBar } from "./progress-bar";
 
@@ -13,10 +13,7 @@ export function LearnProgress({ groups }: { groups: NavGroup[] }) {
 			.filter(([, v]) => v.status === "completed")
 			.map(([lessonId]) => lessonId),
 	);
-	const tracks = groups
-		.filter((group) => group.items.length > 0)
-		.map((group) => ({ title: group.title ?? "その他", urls: group.items.map((i) => i.url) }));
-	const tp = trackProgress(completed, tracks);
+	const tp = trackProgress(completed, navGroupsToTracks(groups));
 	if (tp.total === 0) return null;
 
 	return (
