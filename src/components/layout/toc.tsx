@@ -6,7 +6,7 @@ export function Toc({ items }: { items: TOCItemType[] }) {
 
 	return (
 		<aside className="hidden w-56 shrink-0 xl:block">
-			<div className="sticky top-20">
+			<div className="sticky top-20 max-h-[calc(100vh-5rem)] overflow-y-auto overscroll-contain">
 				<p className="mb-2 text-sm font-semibold text-foreground/80">目次</p>
 				<ul className="space-y-1 text-sm">
 					{items.map((item) => (

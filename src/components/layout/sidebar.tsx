@@ -13,7 +13,7 @@ export function Sidebar({ groups }: { groups: NavGroup[] }) {
 
 	return (
 		<aside className="hidden w-60 shrink-0 md:block">
-			<nav className="sticky top-20 space-y-6">
+			<nav className="sticky top-20 max-h-[calc(100vh-5rem)] space-y-6 overflow-y-auto overscroll-contain">
 				{groups.map((group, index) => {
 					const done = countCompleted(
 						progress,
