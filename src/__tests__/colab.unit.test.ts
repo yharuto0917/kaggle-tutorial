@@ -101,7 +101,7 @@ describe("colab URL 解決・スラッグ正規化", () => {
 	it("未登録のページではダミーリンクを出さず null を返す", () => {
 		const resolved = resolveNotebookLinks({
 			explicitColabUrl: "https://colab.research.google.com/",
-			pageUrl: "/learn/advanced/01-target-encoding",
+			pageUrl: "/learn/ml-basics/01-what-is-ml",
 		});
 		expect(resolved).toEqual({
 			colabUrl: null,
@@ -114,7 +114,7 @@ describe("colab URL 解決・スラッグ正規化", () => {
 		const customUrl = "https://colab.research.google.com/drive/1ABCDEF_example";
 		const resolved = resolveNotebookLinks({
 			explicitColabUrl: customUrl,
-			pageUrl: "/learn/advanced/01-target-encoding",
+			pageUrl: "/learn/ml-basics/01-what-is-ml",
 		});
 		expect(resolved.colabUrl).toBe(customUrl);
 		expect(resolved.downloadUrl).toBeNull();
@@ -197,5 +197,21 @@ describe("Notebook Registry と実ファイル・MDX の整合性", () => {
 			.map((file) => path.relative(process.cwd(), file));
 
 		expect(offenders).toEqual([]);
+	});
+
+	it("<RunLinks> を含む全 MDX ページが Notebook Registry に登録済みである", () => {
+		const contentRoot = path.join(process.cwd(), "content");
+		const mdxWithRunLinks = collectMdxFiles(contentRoot)
+			.filter((file) => readFileSync(file, "utf8").includes("<RunLinks"))
+			.map((file) =>
+				path
+					.relative(contentRoot, file)
+					.replace(/\\/g, "/")
+					.replace(/\.mdx$/i, ""),
+			)
+			.sort();
+
+		expect(mdxWithRunLinks.length).toBe(40);
+		expect(mdxWithRunLinks).toEqual([...REGISTERED_NOTEBOOKS].sort());
 	});
 });

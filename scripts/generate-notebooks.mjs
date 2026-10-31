@@ -216,7 +216,7 @@ def _ensure_house_prices_data():
 _ensure_house_prices_data()`;
 
 /**
- * Part 1 (#72) で生成・整備する 20 件の Notebook 定義。
+ * `<RunLinks>` が配置された全 40 件（#72 + #73）の Notebook 定義。
  * - setupCells: 本文セルの前に挿入するセットアップコードセル配列
  * - injectBeforeBlock: 特定のコードブロック（0始まり）の直前に挿入する補助コードセル
  * - postCells: 末尾に追加する動作確認用コードセル配列
@@ -233,6 +233,216 @@ const NOTEBOOK_CONFIGS = [
 		mdxPath: "content/competitions/house-prices.mdx",
 		setupCells: [HOUSE_PRICES_SETUP_SOURCE],
 		postCells: ['print("submission shape:", submission.shape)\nsubmission.head()'],
+	},
+	{
+		slug: "competitions/playground-series",
+		mdxPath: "content/competitions/playground-series.mdx",
+		setupCells: [
+			`# [Colab / ローカル環境用セットアップ]
+# Playground Series 形式（id, 数値特徴量, 二値 target）の合成データを準備し、
+# "/kaggle/input/<competition>/..." のプレースホルダパスから透過的に読み込めるようにします。
+import os
+import numpy as np
+import pandas as pd
+
+def _ensure_playground_data():
+    data_dir = os.path.abspath("./.kaggle_input/playground-series")
+    os.makedirs(data_dir, exist_ok=True)
+    orig_read_csv = pd.read_csv
+    if not getattr(orig_read_csv, "_is_playground_wrapped", False):
+        def _patched_read_csv(filepath_or_buffer, *args, **kwargs):
+            if isinstance(filepath_or_buffer, str) and filepath_or_buffer.startswith("/kaggle/input/<competition>/"):
+                rel = filepath_or_buffer[len("/kaggle/input/<competition>/"):]
+                filepath_or_buffer = os.path.join(data_dir, rel)
+            return orig_read_csv(filepath_or_buffer, *args, **kwargs)
+        _patched_read_csv._is_playground_wrapped = True
+        pd.read_csv = _patched_read_csv
+
+    rng = np.random.default_rng(42)
+    def _make_split(n, start_id, with_target):
+        feats = {f"feat_{i}": rng.normal(0.0, 1.0, size=n).round(4) for i in range(8)}
+        df = pd.DataFrame({"id": np.arange(start_id, start_id + n), **feats})
+        if with_target:
+            logit = (
+                -0.8
+                + 1.1 * df["feat_0"]
+                - 0.8 * df["feat_1"]
+                + 0.6 * df["feat_2"] * df["feat_3"]
+                + 0.5 * (df["feat_4"] > 0).astype(float)
+            )
+            prob = 1.0 / (1.0 + np.exp(-logit))
+            df["target"] = (rng.random(n) < prob).astype(int)
+        return df
+
+    _make_split(1000, 0, True).to_csv(os.path.join(data_dir, "train.csv"), index=False)
+    _make_split(400, 1000, False).to_csv(os.path.join(data_dir, "test.csv"), index=False)
+    print(f"Playground Series sample dataset ready at: {data_dir}")
+
+_ensure_playground_data()`,
+		],
+		injectBeforeBlock: {
+			2: `# 同一の StratifiedKFold 分割を使って XGBoost と線形モデルの OOF 予測を作成します（fold 外への漏洩なし）
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from xgboost import XGBClassifier
+
+oof_lgbm = oof
+oof_xgb = np.zeros(len(X))
+oof_linear = np.zeros(len(X))
+for tr, va in skf.split(X, y):
+    m_xgb = XGBClassifier(
+        n_estimators=150, max_depth=3, learning_rate=0.05, eval_metric="logloss", random_state=42
+    )
+    m_xgb.fit(X.iloc[tr], y.iloc[tr])
+    oof_xgb[va] = m_xgb.predict_proba(X.iloc[va])[:, 1]
+
+    m_lin = make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000))
+    m_lin.fit(X.iloc[tr], y.iloc[tr])
+    oof_linear[va] = m_lin.predict_proba(X.iloc[va])[:, 1]`,
+		},
+		postCells: ['print("Blended CV AUC:", round(roc_auc_score(y, blend), 4))'],
+	},
+	{
+		slug: "competitions/image-classification",
+		mdxPath: "content/competitions/image-classification.mdx",
+		setupCells: [
+			`# [Colab / ローカル環境用セットアップ]
+# timm パッケージの確認・自動インストールと、画像コンペ形式のメタデータ CSV を準備します。
+import os
+import subprocess
+import sys
+
+try:
+    import timm  # noqa: F401
+except ImportError:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "timm"], check=True)
+
+import numpy as np
+import pandas as pd
+import torch
+
+def _ensure_image_comp_data():
+    data_dir = os.path.abspath("./.kaggle_input/image-classification")
+    os.makedirs(data_dir, exist_ok=True)
+    orig_read_csv = pd.read_csv
+    if not getattr(orig_read_csv, "_is_img_comp_wrapped", False):
+        def _patched_read_csv(filepath_or_buffer, *args, **kwargs):
+            if isinstance(filepath_or_buffer, str) and filepath_or_buffer.startswith("/kaggle/input/<competition>/"):
+                rel = filepath_or_buffer[len("/kaggle/input/<competition>/"):]
+                filepath_or_buffer = os.path.join(data_dir, rel)
+            return orig_read_csv(filepath_or_buffer, *args, **kwargs)
+        _patched_read_csv._is_img_comp_wrapped = True
+        pd.read_csv = _patched_read_csv
+
+    rng = np.random.default_rng(42)
+    labels = rng.choice([0, 1, 2, 3, 4], size=120, p=[0.35, 0.25, 0.20, 0.12, 0.08])
+    pd.DataFrame({
+        "image_id": [f"img_{i:04d}.jpg" for i in range(len(labels))],
+        "label": labels,
+    }).to_csv(os.path.join(data_dir, "train.csv"), index=False)
+    print(f"Image competition metadata ready at: {data_dir}")
+
+_ensure_image_comp_data()`,
+		],
+		injectBeforeBlock: {
+			1: '# クラス数を訓練メタデータから取得します\nn_classes = int(df["label"].nunique())',
+			3: `# 5-fold 学習済みモデルの推論ラッパーとダミー画像バッチ (4枚, RGB, 224x224) を用意してアンサンブル推論を確認します
+model.eval()
+
+class _FoldPredictor:
+    def __init__(self, net):
+        self.net = net
+    def predict(self, batch_tensor):
+        with torch.no_grad():
+            return torch.softmax(self.net(batch_tensor), dim=-1).cpu().numpy()
+
+fold_models = [_FoldPredictor(model) for _ in range(5)]
+test = torch.randn(4, 3, 224, 224)`,
+		},
+		postCells: [
+			'print("Fold-averaged test_pred shape:", test_pred.shape)\nprint(test_pred.round(3))',
+		],
+	},
+	{
+		slug: "competitions/nlp-text-classification",
+		mdxPath: "content/competitions/nlp-text-classification.mdx",
+		setupCells: [
+			`# [Colab / ローカル環境用セットアップ]
+# transformers の確認と、訓練・テスト分離済みのテキスト分類サンプルデータを準備します。
+import os
+import subprocess
+import sys
+
+try:
+    import transformers  # noqa: F401
+except ImportError:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "transformers"], check=True)
+
+import pandas as pd
+
+def _ensure_nlp_comp_data():
+    data_dir = os.path.abspath("./.kaggle_input/nlp-text-classification")
+    os.makedirs(data_dir, exist_ok=True)
+    orig_read_csv = pd.read_csv
+    if not getattr(orig_read_csv, "_is_nlp_comp_wrapped", False):
+        def _patched_read_csv(filepath_or_buffer, *args, **kwargs):
+            if isinstance(filepath_or_buffer, str) and filepath_or_buffer.startswith("/kaggle/input/<competition>/"):
+                rel = filepath_or_buffer[len("/kaggle/input/<competition>/"):]
+                filepath_or_buffer = os.path.join(data_dir, rel)
+            return orig_read_csv(filepath_or_buffer, *args, **kwargs)
+        _patched_read_csv._is_nlp_comp_wrapped = True
+        pd.read_csv = _patched_read_csv
+
+    pos_samples = [
+        "Stratified cross validation kept our local score aligned with the leaderboard.",
+        "Combining TF-IDF features with gradient boosting built a strong baseline.",
+        "Careful feature engineering improved generalization on unseen test records.",
+        "Ensembling diverse architectures reduced variance and stabilized predictions.",
+    ] * 8
+    neg_samples = [
+        "Fitting the vectorizer before splitting leaked validation vocabulary.",
+        "Overfitting to the public leaderboard caused a severe private shakeup.",
+        "Missing value imputation across the full table distorted fold evaluation.",
+        "Ignoring class imbalance degraded macro F1 on minority categories.",
+    ] * 8
+
+    train_df = pd.DataFrame({
+        "text": pos_samples + neg_samples,
+        "label": [1] * len(pos_samples) + [0] * len(neg_samples),
+    })
+    test_df = pd.DataFrame({
+        "text": [
+            "Out-of-fold validation prevented leakage and improved model blending.",
+            "Target leakage inflated validation metrics and ruined test performance.",
+            "Transfer learning with pretrained transformers boosted text accuracy.",
+            "Unchecked distribution shift between train and test broke predictions.",
+        ]
+    })
+    train_df.to_csv(os.path.join(data_dir, "train.csv"), index=False)
+    test_df.to_csv(os.path.join(data_dir, "test.csv"), index=False)
+    print(f"NLP competition dataset ready at: {data_dir}")
+
+_ensure_nlp_comp_data()`,
+		],
+		injectBeforeBlock: {
+			1: `# テストデータを読み込み、訓練データのみで fit した TF-IDF + 線形モデルでテスト予測確率を算出します
+test_df = pd.read_csv("/kaggle/input/<competition>/test.csv")
+pred_tfidf = model.predict_proba(tfidf.transform(test_df["text"]))[:, 1]
+
+# 続く BERT トークナイズ用にクラス数とテスト文章リストを設定します
+n_classes = int(df["label"].nunique())
+texts = test_df["text"].tolist()`,
+			2: `# BERT モデルでテスト文章の陽性クラス確率を推論します
+import torch
+
+model.eval()
+with torch.no_grad():
+    pred_bert = torch.softmax(model(**enc).logits, dim=-1)[:, 1].cpu().numpy()`,
+		},
+		postCells: [
+			'pd.DataFrame({"text": texts, "pred_tfidf": pred_tfidf.round(3), "pred_bert": pred_bert.round(3), "blend": pred.round(3)})',
+		],
 	},
 	{
 		slug: "learn/python-data-analysis/01-python-basics",
@@ -395,6 +605,319 @@ gbr = Pipeline([("pre", pre), ("gbr", GradientBoostingRegressor(random_state=42)
 		},
 		postCells: [
 			'submission = pd.DataFrame({"Id": test["Id"], "SalePrice": pred})\nprint("Blended predictions preview:")\nsubmission.head()',
+		],
+	},
+	// L5: 勾配ブースティング (3件)
+	{
+		slug: "learn/gradient-boosting/04-xgboost",
+		mdxPath: "content/learn/gradient-boosting/04-xgboost.mdx",
+		setupCells: [
+			TITANIC_SETUP_SOURCE,
+			'# Titanic の数値特徴量 X と目的変数 y を準備します（欠損値は XGBoost が分岐学習で直接扱います）\ndf = pd.read_csv("/kaggle/input/titanic/train.csv")\nfeatures = ["Pclass", "Age", "SibSp", "Parch", "Fare"]\nX = df[features].copy()\ny = df["Survived"]',
+		],
+		postCells: [
+			'from sklearn.metrics import roc_auc_score\nval_auc = roc_auc_score(y_va, model.predict_proba(X_va)[:, 1])\nprint(f"Validation AUC: {val_auc:.4f}")',
+		],
+	},
+	{
+		slug: "learn/gradient-boosting/05-lightgbm",
+		mdxPath: "content/learn/gradient-boosting/05-lightgbm.mdx",
+		setupCells: [
+			TITANIC_SETUP_SOURCE,
+			'# Titanic データを読み込み、訓練・検証へ層化分割します（統計量を使わない category 型変換のみ実施）\nfrom sklearn.model_selection import train_test_split\n\ndf = pd.read_csv("/kaggle/input/titanic/train.csv")\ncat_cols = ["Sex", "Embarked"]\nfeatures = ["Pclass", "Age", "SibSp", "Parch", "Fare"] + cat_cols\nX = df[features].copy()\nfor c in cat_cols:\n    X[c] = X[c].astype("category")\ny = df["Survived"]\nX_tr, X_va, y_tr, y_va = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)\nX_tr, X_va = X_tr.copy(), X_va.copy()',
+		],
+		postCells: [
+			'from sklearn.metrics import roc_auc_score\nval_auc = roc_auc_score(y_va, model.predict_proba(X_va)[:, 1])\nprint(f"LightGBM Validation AUC: {val_auc:.4f}")',
+		],
+	},
+	{
+		slug: "learn/gradient-boosting/06-catboost",
+		mdxPath: "content/learn/gradient-boosting/06-catboost.mdx",
+		setupCells: [
+			`# [Colab / ローカル環境用セットアップ] catboost が未インストールの場合は自動インストールします
+import subprocess
+import sys
+
+try:
+    import catboost  # noqa: F401
+except ImportError:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "catboost"], check=True)`,
+			TITANIC_SETUP_SOURCE,
+			'# カテゴリ列の欠損を定数文字列 "Missing" に統一した上で訓練・検証へ層化分割します\nfrom sklearn.model_selection import train_test_split\n\ndf = pd.read_csv("/kaggle/input/titanic/train.csv")\nfeatures = ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]\nX = df[features].copy()\nX["Sex"] = X["Sex"].astype(str)\nX["Embarked"] = X["Embarked"].fillna("Missing").astype(str)\ny = df["Survived"]\nX_tr, X_va, y_tr, y_va = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)',
+		],
+		postCells: [
+			'from sklearn.metrics import roc_auc_score\nval_auc = roc_auc_score(y_va, model.predict_proba(X_va)[:, 1])\nprint(f"CatBoost Validation AUC: {val_auc:.4f} (best_iteration={model.get_best_iteration()})")',
+		],
+	},
+	// L6: アンサンブル・コンペ実践フロー (2件)
+	{
+		slug: "learn/ensemble-workflow/02-averaging-blending",
+		mdxPath: "content/learn/ensemble-workflow/02-averaging-blending.mdx",
+		setupCells: [
+			`# 3 系統モデルの OOF 予測確率（重み探索用）とテスト予測確率を用意します
+import numpy as np
+from sklearn.metrics import roc_auc_score
+
+rng = np.random.default_rng(42)
+n_train, n_test = 600, 200
+y = rng.integers(0, 2, size=n_train)
+
+oof_lgbm = np.clip(0.25 + 0.50 * y + rng.normal(0, 0.22, size=n_train), 0.01, 0.99)
+oof_xgb = np.clip(0.27 + 0.46 * y + rng.normal(0, 0.24, size=n_train), 0.01, 0.99)
+oof_linear = np.clip(0.30 + 0.40 * y + rng.normal(0, 0.26, size=n_train), 0.01, 0.99)
+
+pred_lgbm = rng.uniform(0.05, 0.95, size=n_test)
+pred_xgb = rng.uniform(0.05, 0.95, size=n_test)
+pred_linear = rng.uniform(0.05, 0.95, size=n_test)`,
+		],
+		postCells: [
+			'print(f"Best OOF AUC: {best[0]:.4f}, optimal weights (lgbm, xgb, linear): {tuple(round(w, 2) for w in best[1])}")\nprint("Rank-averaged test prediction preview:", rank[:5])',
+		],
+	},
+	{
+		slug: "learn/ensemble-workflow/03-stacking",
+		mdxPath: "content/learn/ensemble-workflow/03-stacking.mdx",
+		setupCells: [
+			`# スタッキング検証用の二値分類データ (NumPy 配列) とベースモデル生成関数を用意します
+import numpy as np
+from lightgbm import LGBMClassifier
+from sklearn.datasets import make_classification
+from xgboost import XGBClassifier
+
+X_all, y_all = make_classification(
+    n_samples=800, n_features=12, n_informative=8, n_redundant=2, random_state=42
+)
+X, y = X_all[:600], y_all[:600]
+X_test, y_test_holdout = X_all[600:], y_all[600:]
+
+def make_lgbm():
+    return LGBMClassifier(n_estimators=100, learning_rate=0.05, random_state=42, verbose=-1)
+
+def make_xgb():
+    return XGBClassifier(n_estimators=100, max_depth=3, learning_rate=0.05, eval_metric="logloss", random_state=42)`,
+		],
+		postCells: [
+			'from sklearn.metrics import roc_auc_score\nprint("Holdout AUC (LGBM):", round(roc_auc_score(y_test_holdout, test_lgbm), 4))\nprint("Holdout AUC (XGB):", round(roc_auc_score(y_test_holdout, test_xgb), 4))\nprint("Holdout AUC (Stacked):", round(roc_auc_score(y_test_holdout, final), 4))',
+		],
+	},
+	// L7: ディープラーニングと多様なデータ (7件)
+	{
+		slug: "learn/deep-learning/02-pytorch-intro",
+		mdxPath: "content/learn/deep-learning/02-pytorch-intro.mdx",
+		setupCells: [],
+		injectBeforeBlock: {
+			1: `# 先のセルで autograd 例としてスカラー y が定義されたため、表形式学習用の特徴量 X と二値ラベル y を準備します
+import numpy as np
+
+rng = np.random.default_rng(42)
+X = rng.normal(size=(256, 8)).astype(np.float32)
+y = ((X[:, 0] - 0.7 * X[:, 1]) > 0).astype(np.float32)`,
+		},
+		postCells: ['print(f"Final mini-batch training loss: {loss.item():.4f}")'],
+	},
+	{
+		slug: "learn/deep-learning/03-tabular-dl",
+		mdxPath: "content/learn/deep-learning/03-tabular-dl.mdx",
+		setupCells: ["import torch"],
+		postCells: [
+			'# サンプルバッチ（カテゴリ ID と数値特徴量）を入力して出力形状を確認します\nnet = TabularNet(n_categories=10, emb_dim=8, n_numeric=5)\ncat_batch = torch.tensor([0, 3, 7, 2], dtype=torch.long)\nnum_batch = torch.randn(4, 5)\nout = net(cat_batch, num_batch)\nprint("TabularNet output shape:", out.shape)',
+		],
+	},
+	{
+		slug: "learn/deep-learning/04-cnn-basics",
+		mdxPath: "content/learn/deep-learning/04-cnn-basics.mdx",
+		setupCells: ["import torch\nn_classes = 10"],
+		postCells: [
+			'# ダミー RGB 画像バッチ (4枚, 3ch, 32x32) の順伝播を確認します\ndummy_images = torch.randn(4, 3, 32, 32)\nlogits = cnn(dummy_images)\nprint("CNN logits shape:", logits.shape)',
+		],
+	},
+	{
+		slug: "learn/deep-learning/05-transfer-learning",
+		mdxPath: "content/learn/deep-learning/05-transfer-learning.mdx",
+		setupCells: [
+			`# timm の確認・自動インストールとクラス数の設定を行います
+import subprocess
+import sys
+
+try:
+    import timm  # noqa: F401
+except ImportError:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "timm"], check=True)
+
+import torch
+n_classes = 5`,
+		],
+		postCells: [
+			'model.eval()\nwith torch.no_grad():\n    out = model(torch.randn(2, 3, 224, 224))\nprint("Pretrained ResNet18 output shape:", out.shape, "| optimizer:", optimizer.__class__.__name__)',
+		],
+	},
+	{
+		slug: "learn/deep-learning/06-nlp-classic",
+		mdxPath: "content/learn/deep-learning/06-nlp-classic.mdx",
+		setupCells: [
+			`# 訓練文書と未見のテスト文書を分離して用意します（TF-IDF は訓練文書のみで fit）
+train_text = [
+    "Cross validation prevented overfitting and improved generalization.",
+    "Feature engineering with domain insights boosted validation AUC.",
+    "Blending diverse models produced a stable leaderboard result.",
+    "Clean pipeline design eliminated target leakage across folds.",
+    "Data leakage from global scaling ruined private leaderboard score.",
+    "Unvalidated threshold tuning overfit badly to public test split.",
+    "Corrupted labels and unaligned columns caused silent prediction errors.",
+    "Ignoring group structure leaked user history into validation folds.",
+]
+y = [1, 1, 1, 1, 0, 0, 0, 0]
+
+test_text = [
+    "Out-of-fold validation gave reliable ensemble weights.",
+    "Global imputation before splitting leaked validation statistics.",
+]`,
+		],
+		postCells: [
+			'test_probs = model.predict_proba(X_test)[:, 1]\nfor txt, p in zip(test_text, test_probs):\n    print(f"prob={p:.3f} | {txt}")',
+		],
+	},
+	{
+		slug: "learn/deep-learning/07-transformers",
+		mdxPath: "content/learn/deep-learning/07-transformers.mdx",
+		setupCells: [
+			`# transformers の確認・自動インストールとサンプル英文リストを用意します
+import subprocess
+import sys
+
+try:
+    import transformers  # noqa: F401
+except ImportError:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "transformers"], check=True)
+
+import torch
+
+texts = [
+    "Pretrained transformers capture context effectively for text competitions.",
+    "Fine-tuning with a small learning rate stabilizes downstream performance.",
+]`,
+		],
+		postCells: [
+			'model.eval()\nwith torch.no_grad():\n    probs = torch.softmax(model(**enc).logits, dim=-1)\nprint("input_ids shape:", enc["input_ids"].shape)\nprint("predicted probabilities:\\n", probs.cpu().numpy().round(4))',
+		],
+	},
+	{
+		slug: "learn/deep-learning/08-time-series",
+		mdxPath: "content/learn/deep-learning/08-time-series.mdx",
+		setupCells: [
+			`# 複数系列（store_A / store_B）の日次売上サンプルデータを生成します
+import numpy as np
+import pandas as pd
+
+rng = np.random.default_rng(42)
+dates = pd.date_range("2025-01-01", periods=14, freq="D")
+df = pd.DataFrame({
+    "id": np.repeat(["store_A", "store_B"], len(dates)),
+    "date": np.tile(dates, 2),
+    "y": (100 + np.tile(np.arange(len(dates)) * 2.0, 2) + rng.normal(0, 4.0, size=len(dates) * 2)).round(2),
+})`,
+		],
+		postCells: ['df[["id", "date", "y", "lag_1", "roll_mean_7"]].dropna().head(8)'],
+	},
+	// L8: 上級テクニック・運用 (5件)
+	{
+		slug: "learn/advanced/01-target-encoding",
+		mdxPath: "content/learn/advanced/01-target-encoding.mdx",
+		setupCells: [
+			TITANIC_SETUP_SOURCE,
+			'train = pd.read_csv("/kaggle/input/titanic/train.csv")\ntest = pd.read_csv("/kaggle/input/titanic/test.csv")',
+		],
+		postCells: [
+			'# Titanic の Embarked 列に OOF Target Encoding を適用して結果を確認します\noof_te, test_te = target_encode_oof(train, test, col="Embarked", target="Survived")\nprint("OOF encoded Embarked (first 5):", oof_te[:5].round(4))\nprint("Test encoded Embarked (first 5):", test_te[:5].round(4))',
+		],
+	},
+	{
+		slug: "learn/advanced/02-adversarial-validation",
+		mdxPath: "content/learn/advanced/02-adversarial-validation.mdx",
+		setupCells: [
+			TITANIC_SETUP_SOURCE,
+			`# Titanic の train / test から LightGBM で直接扱える特徴量と target 名を準備します
+raw_train = pd.read_csv("/kaggle/input/titanic/train.csv")
+raw_test = pd.read_csv("/kaggle/input/titanic/test.csv")
+
+features = ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]
+target = "Survived"
+train = raw_train[features + [target]].copy()
+test = raw_test[features].copy()
+for col in ["Sex", "Embarked"]:
+    train[col] = train[col].astype("category")
+    test[col] = test[col].astype("category")`,
+		],
+	},
+	{
+		slug: "learn/advanced/03-pseudo-labeling",
+		mdxPath: "content/learn/advanced/03-pseudo-labeling.mdx",
+		setupCells: [
+			`# 初期学習用の訓練データと未ラベルのテストデータを用意します（検証セットは別途分離して保持）
+import numpy as np
+from sklearn.datasets import make_classification
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import train_test_split
+
+X_all, y_all = make_classification(n_samples=700, n_features=8, n_informative=5, random_state=42)
+X_labeled, X_test, y_labeled, _ = train_test_split(X_all, y_all, test_size=250, random_state=42)
+X_train, X_valid, y_train, y_valid = train_test_split(
+    X_labeled, y_labeled, test_size=0.25, stratify=y_labeled, random_state=42
+)
+
+model = LogisticRegression(max_iter=1000).fit(X_train, y_train)
+base_auc = roc_auc_score(y_valid, model.predict_proba(X_valid)[:, 1])
+print(f"Baseline validation AUC (before pseudo-labeling): {base_auc:.4f}")`,
+		],
+		postCells: [
+			'after_auc = roc_auc_score(y_valid, model.predict_proba(X_valid)[:, 1])\nprint(f"Selected high-confidence pseudo-labels: {len(pseudo_X)} / {len(X_test)}")\nprint(f"Validation AUC (evaluated strictly on clean X_valid): {after_auc:.4f}")',
+		],
+	},
+	{
+		slug: "learn/advanced/04-post-processing",
+		mdxPath: "content/learn/advanced/04-post-processing.mdx",
+		setupCells: [
+			`# 陽性率 15% の不均衡な検証ラベル y_valid と OOF 予測確率を用意します
+import numpy as np
+
+rng = np.random.default_rng(42)
+n_samples = 1000
+y_valid = (rng.random(n_samples) < 0.15).astype(int)
+oof = np.where(y_valid == 1, rng.beta(2.6, 3.8, size=n_samples), rng.beta(1.1, 10.5, size=n_samples))`,
+		],
+		postCells: [
+			'default_f1 = f1_score(y_valid, (oof > 0.5).astype(int))\nprint(f"Default threshold (0.50) F1: {default_f1:.4f} -> Optimized threshold ({best_t:.2f}) F1: {best_f1:.4f}")',
+		],
+	},
+	{
+		slug: "learn/advanced/06-big-data-memory",
+		mdxPath: "content/learn/advanced/06-big-data-memory.mdx",
+		setupCells: [
+			`# polars の確認・自動インストールと、チャンク処理・遅延評価用のサンプル CSV ("big.csv") を作成します
+import subprocess
+import sys
+
+try:
+    import polars  # noqa: F401
+except ImportError:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "polars"], check=True)
+
+import numpy as np
+import pandas as pd
+
+rng = np.random.default_rng(42)
+n_rows = 50_000
+sample_df = pd.DataFrame({
+    "id": rng.choice(["A", "B", "C", "D"], size=n_rows),
+    "y": rng.normal(100.0, 20.0, size=n_rows).round(2),
+    "count": rng.integers(1, 500, size=n_rows),
+})
+sample_df.to_csv("big.csv", index=False)
+print("Created sample big.csv:", sample_df.shape)`,
+		],
+		postCells: [
+			'before_kb = sample_df.memory_usage(deep=True).sum() / 1024\nreduced_df = reduce_mem(sample_df.copy())\nafter_kb = reduced_df.memory_usage(deep=True).sum() / 1024\nprint(f"Memory usage: {before_kb:.1f} KB -> {after_kb:.1f} KB")\nprint("Chunk sum:\\n", agg)\nprint("Polars lazy mean:\\n", out)',
 		],
 	},
 ];
