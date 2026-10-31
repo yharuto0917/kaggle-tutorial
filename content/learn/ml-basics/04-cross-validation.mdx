@@ -22,11 +22,14 @@ Fold2: [訓練][検証][訓練][訓練][訓練]
 スコア評価やアンサンブルに使います。
 
 ```python
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.pipeline import make_pipeline
 
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-scores = cross_val_score(LogisticRegression(max_iter=1000), X, y, cv=skf)
+model = make_pipeline(SimpleImputer(strategy="median"), LogisticRegression(max_iter=1000))
+scores = cross_val_score(model, X, y, cv=skf)
 print(scores.mean(), scores.std())
 ```
 

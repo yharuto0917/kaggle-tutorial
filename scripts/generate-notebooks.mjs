@@ -300,7 +300,7 @@ const NOTEBOOK_CONFIGS = [
 		mdxPath: "content/learn/ml-basics/04-cross-validation.mdx",
 		setupCells: [
 			TITANIC_SETUP_SOURCE,
-			'# 数値特徴量を取り出し、欠損を中央値で補完して X, y を準備します\ndf = pd.read_csv("/kaggle/input/titanic/train.csv")\nfeatures = ["Pclass", "Age", "SibSp", "Parch", "Fare"]\nX = df[features].fillna(df[features].median())\ny = df["Survived"]',
+			'# 数値特徴量 X と目的変数 y を準備します（欠損補完はリーク防止のため CV 内の Pipeline で行います）\ndf = pd.read_csv("/kaggle/input/titanic/train.csv")\nfeatures = ["Pclass", "Age", "SibSp", "Parch", "Fare"]\nX = df[features]\ny = df["Survived"]',
 		],
 	},
 	{
@@ -326,8 +326,11 @@ const NOTEBOOK_CONFIGS = [
 		mdxPath: "content/learn/ml-basics/07-scikit-learn-api.mdx",
 		setupCells: [
 			TITANIC_SETUP_SOURCE,
-			'# 訓練・検証データを用意します\nfrom sklearn.model_selection import train_test_split\ndf = pd.read_csv("/kaggle/input/titanic/train.csv")\nfeatures = ["Pclass", "Age", "SibSp", "Parch", "Fare"]\nX = df[features].fillna(df[features].median())\ny = df["Survived"]\nX_train, X_valid, y_train, y_valid = train_test_split(\n    X, y, test_size=0.2, stratify=y, random_state=42\n)',
+			'# 先に訓練・検証データへ分割し、最初の単体モデル例向けに訓練側のみで中央値を fit して補完します\nfrom sklearn.impute import SimpleImputer\nfrom sklearn.model_selection import train_test_split\n\ndf = pd.read_csv("/kaggle/input/titanic/train.csv")\nfeatures = ["Pclass", "Age", "SibSp", "Parch", "Fare"]\nX = df[features]\ny = df["Survived"]\nX_train_raw, X_valid_raw, y_train, y_valid = train_test_split(\n    X, y, test_size=0.2, stratify=y, random_state=42\n)\nimputer = SimpleImputer(strategy="median")\nX_train = pd.DataFrame(imputer.fit_transform(X_train_raw), columns=features, index=X_train_raw.index)\nX_valid = pd.DataFrame(imputer.transform(X_valid_raw), columns=features, index=X_valid_raw.index)',
 		],
+		injectBeforeBlock: {
+			1: "# Pipeline 内の SimpleImputer が実際に欠損補完を担うよう、補完前の分割データを使います\nX_train, X_valid = X_train_raw, X_valid_raw",
+		},
 	},
 	{
 		slug: "learn/ml-basics/08-first-models",
@@ -347,10 +350,10 @@ const NOTEBOOK_CONFIGS = [
 		mdxPath: "content/learn/intro-competitions/04-titanic-cv.mdx",
 		setupCells: [
 			TITANIC_SETUP_SOURCE,
-			'# 前レッスン（L3-03）のベースライン特徴量 X, y を準備します\ntrain = pd.read_csv("/kaggle/input/titanic/train.csv")\nfeatures = ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]\n\ndef preprocess(df):\n    df = df.copy()\n    df["Age"] = df["Age"].fillna(df["Age"].median())\n    df["Fare"] = df["Fare"].fillna(df["Fare"].median())\n    df["Embarked"] = df["Embarked"].fillna("S")\n    return df\n\nX = pd.get_dummies(preprocess(train)[features])\ny = train["Survived"]',
+			'# ベースライン特徴量 X, y を準備します（分割前の全体中央値補完によるリークを避け、数値欠損は RandomForest にそのまま渡します）\ntrain = pd.read_csv("/kaggle/input/titanic/train.csv")\nfeatures = ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]\nX = pd.get_dummies(train[features])\ny = train["Survived"]',
 		],
 		postCells: [
-			'# 追加した特徴量を含めて CV スコアの変化を確認します\ntrain_fe = add_features(preprocess(train))\nfe_cols = features + ["FamilySize", "IsAlone", "Title"]\nX_fe = pd.get_dummies(train_fe[fe_cols])\nscores_fe = cross_val_score(model, X_fe, y, cv=cv, scoring="accuracy")\nprint(f"Improved CV accuracy: {scores_fe.mean():.4f} +/- {scores_fe.std():.4f}")',
+			'# 追加した特徴量を含めて CV スコアの変化を確認します\ntrain_fe = add_features(train)\nfe_cols = features + ["FamilySize", "IsAlone", "Title"]\nX_fe = pd.get_dummies(train_fe[fe_cols])\nscores_fe = cross_val_score(model, X_fe, y, cv=cv, scoring="accuracy")\nprint(f"Improved CV accuracy: {scores_fe.mean():.4f} +/- {scores_fe.std():.4f}")',
 		],
 	},
 	{

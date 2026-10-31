@@ -62,13 +62,13 @@ describe("colab URL 解決・スラッグ正規化", () => {
 		).toBe(false);
 	});
 
-	it("スラッシュを含むブランチ名でもパス区切りを維持して Colab GitHub URL を生成する", () => {
+	it("スラッシュを含むブランチ名は Colab ルータ仕様に合わせて %2F にエンコードする", () => {
 		const url = buildColabGithubUrl("competitions/titanic", {
 			repo: "yharuto0917/kaggle-tutorial",
 			branch: "gemini/feat/colab-notebooks-part1",
 		});
 		expect(url).toBe(
-			"https://colab.research.google.com/github/yharuto0917/kaggle-tutorial/blob/gemini/feat/colab-notebooks-part1/public/notebooks/competitions/titanic.ipynb",
+			"https://colab.research.google.com/github/yharuto0917/kaggle-tutorial/blob/gemini%2Ffeat%2Fcolab-notebooks-part1/public/notebooks/competitions/titanic.ipynb",
 		);
 	});
 

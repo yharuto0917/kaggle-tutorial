@@ -127,7 +127,7 @@ export function sanitizeKaggleUrl(url: string | undefined): string | null {
 }
 
 /**
- * スラッシュ区切りのパス（`owner/repo` や `gemini/feat/...` 等のブランチ名）を、
+ * スラッシュ区切りのパス（`owner/repo` や Notebook スラッグ）を、
  * 区切り文字 `/` を保ったまま各セグメント単位で URL エンコードする。
  */
 function encodeSlashSeparatedPath(value: string): string {
@@ -142,6 +142,10 @@ function encodeSlashSeparatedPath(value: string): string {
 
 /**
  * 正規化済みスラッグから Google Colab の GitHub 起動 URL を組み立てる。
+ *
+ * Colab の `/github/<owner>/<repo>/blob/<branch>/<path>` ルータは `blob/` 直後の
+ * 単一セグメントをブランチ名として解釈するため、`/` を含むブランチ名は
+ * `encodeURIComponent` で `%2F` を含めてエンコードする。
  */
 export function buildColabGithubUrl(slug: string, config?: ColabRepoConfig): string {
 	const normalizedSlug = normalizeNotebookSlug(slug);
@@ -149,13 +153,15 @@ export function buildColabGithubUrl(slug: string, config?: ColabRepoConfig): str
 		config?.repo?.trim() ||
 		process.env.NEXT_PUBLIC_COLAB_GITHUB_REPO?.trim() ||
 		DEFAULT_COLAB_GITHUB_REPO;
-	const rawBranch =
+	const candidateBranch = (
 		config?.branch?.trim() ||
 		process.env.NEXT_PUBLIC_COLAB_GITHUB_BRANCH?.trim() ||
-		DEFAULT_COLAB_GITHUB_BRANCH;
+		""
+	).replace(/^\/+|\/+$/g, "");
+	const rawBranch = candidateBranch || DEFAULT_COLAB_GITHUB_BRANCH;
 
 	const encodedRepo = encodeSlashSeparatedPath(rawRepo);
-	const encodedBranch = encodeSlashSeparatedPath(rawBranch);
+	const encodedBranch = encodeURIComponent(rawBranch);
 	const encodedSlug = encodeSlashSeparatedPath(normalizedSlug);
 
 	return `https://colab.research.google.com/github/${encodedRepo}/blob/${encodedBranch}/public/notebooks/${encodedSlug}.ipynb`;
