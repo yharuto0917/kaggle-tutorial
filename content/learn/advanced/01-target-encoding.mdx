@@ -23,14 +23,15 @@ from sklearn.model_selection import StratifiedKFold
 
 def target_encode_oof(train, test, col, target, n_splits=5, smoothing=10):
     oof = np.zeros(len(train))
-    prior = train[target].mean()
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
     for tr, va in skf.split(train, train[target]):
+        prior_tr = train.iloc[tr][target].mean()
         agg = train.iloc[tr].groupby(col)[target].agg(["mean", "count"])
-        # 平滑化: 件数が少ない水準は全体平均(prior)へ寄せる
-        smooth = (agg["mean"] * agg["count"] + prior * smoothing) / (agg["count"] + smoothing)
-        oof[va] = train.iloc[va][col].map(smooth).fillna(prior).values
+        # 平滑化: 件数が少ない水準は fold 内の事前平均(prior_tr)へ寄せる
+        smooth = (agg["mean"] * agg["count"] + prior_tr * smoothing) / (agg["count"] + smoothing)
+        oof[va] = train.iloc[va][col].map(smooth).fillna(prior_tr).values
     # test は train 全体で計算した平滑化値を使う
+    prior = train[target].mean()
     agg = train.groupby(col)[target].agg(["mean", "count"])
     smooth = (agg["mean"] * agg["count"] + prior * smoothing) / (agg["count"] + smoothing)
     test_enc = test[col].map(smooth).fillna(prior).values
