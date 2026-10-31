@@ -252,11 +252,18 @@ def _ensure_playground_data():
     if not getattr(orig_read_csv, "_is_playground_wrapped", False):
         def _patched_read_csv(filepath_or_buffer, *args, **kwargs):
             if isinstance(filepath_or_buffer, str) and filepath_or_buffer.startswith("/kaggle/input/<competition>/"):
-                rel = filepath_or_buffer[len("/kaggle/input/<competition>/"):]
-                filepath_or_buffer = os.path.join(data_dir, rel)
+                if not os.path.exists(filepath_or_buffer):
+                    rel = filepath_or_buffer[len("/kaggle/input/<competition>/"):]
+                    filepath_or_buffer = os.path.join(data_dir, rel)
             return orig_read_csv(filepath_or_buffer, *args, **kwargs)
         _patched_read_csv._is_playground_wrapped = True
         pd.read_csv = _patched_read_csv
+
+    train_path = os.path.join(data_dir, "train.csv")
+    test_path = os.path.join(data_dir, "test.csv")
+    if os.path.exists(train_path) and os.path.exists(test_path):
+        print(f"Using existing Playground Series dataset at: {data_dir}")
+        return
 
     rng = np.random.default_rng(42)
     def _make_split(n, start_id, with_target):
@@ -274,8 +281,8 @@ def _ensure_playground_data():
             df["target"] = (rng.random(n) < prob).astype(int)
         return df
 
-    _make_split(1000, 0, True).to_csv(os.path.join(data_dir, "train.csv"), index=False)
-    _make_split(400, 1000, False).to_csv(os.path.join(data_dir, "test.csv"), index=False)
+    _make_split(1000, 0, True).to_csv(train_path, index=False)
+    _make_split(400, 1000, False).to_csv(test_path, index=False)
     print(f"Playground Series sample dataset ready at: {data_dir}")
 
 _ensure_playground_data()`,
@@ -308,7 +315,7 @@ for tr, va in skf.split(X, y):
 		mdxPath: "content/competitions/image-classification.mdx",
 		setupCells: [
 			`# [Colab / ローカル環境用セットアップ]
-# timm パッケージの確認・自動インストールと、画像コンペ形式のメタデータ CSV を準備します。
+# timm パッケージの確認・自動インストールと、画像コンペ形式のメタデータ CSV および合成 RGB 画像生成関数を準備します。
 import os
 import subprocess
 import sys
@@ -322,6 +329,26 @@ import numpy as np
 import pandas as pd
 import torch
 
+def _make_synth_images(label_codes, seed=42):
+    """各クラス固有の色・空間パッチ特徴を持つ 64x64 RGB 画像テンソルを生成します。"""
+    rng = np.random.default_rng(seed)
+    imgs = rng.normal(0.0, 0.25, size=(len(label_codes), 3, 64, 64)).astype(np.float32)
+    palette = [
+        (1.6, -0.8, -0.8),
+        (-0.8, 1.6, -0.8),
+        (-0.8, -0.8, 1.6),
+        (1.3, 1.3, -0.9),
+        (-0.9, 1.3, 1.3),
+    ]
+    # 水平反転（データ拡張）してもクラスの意味が壊れない左右対称の空間パッチを配置します
+    patches = [(4, 22, 8, 56), (23, 41, 8, 56), (42, 60, 8, 56), (8, 56, 8, 56), (18, 46, 18, 46)]
+    for idx, code in enumerate(label_codes):
+        c = int(code) % len(palette)
+        r0, r1, c0, c1 = patches[c]
+        for ch in range(3):
+            imgs[idx, ch, r0:r1, c0:c1] += palette[c][ch]
+    return torch.tensor(imgs)
+
 def _ensure_image_comp_data():
     data_dir = os.path.abspath("./.kaggle_input/image-classification")
     os.makedirs(data_dir, exist_ok=True)
@@ -329,39 +356,106 @@ def _ensure_image_comp_data():
     if not getattr(orig_read_csv, "_is_img_comp_wrapped", False):
         def _patched_read_csv(filepath_or_buffer, *args, **kwargs):
             if isinstance(filepath_or_buffer, str) and filepath_or_buffer.startswith("/kaggle/input/<competition>/"):
-                rel = filepath_or_buffer[len("/kaggle/input/<competition>/"):]
-                filepath_or_buffer = os.path.join(data_dir, rel)
+                if not os.path.exists(filepath_or_buffer):
+                    rel = filepath_or_buffer[len("/kaggle/input/<competition>/"):]
+                    filepath_or_buffer = os.path.join(data_dir, rel)
             return orig_read_csv(filepath_or_buffer, *args, **kwargs)
         _patched_read_csv._is_img_comp_wrapped = True
         pd.read_csv = _patched_read_csv
 
+    train_path = os.path.join(data_dir, "train.csv")
+    if os.path.exists(train_path):
+        print(f"Using existing image competition metadata at: {train_path}")
+        return
+
     rng = np.random.default_rng(42)
-    labels = rng.choice([0, 1, 2, 3, 4], size=120, p=[0.35, 0.25, 0.20, 0.12, 0.08])
+    # 5-fold StratifiedKFold で各クラス十分な件数を保ちつつ不均衡な分布を作成します（計 60 件）
+    labels = np.array([0] * 18 + [1] * 14 + [2] * 12 + [3] * 9 + [4] * 7)
+    rng.shuffle(labels)
     pd.DataFrame({
         "image_id": [f"img_{i:04d}.jpg" for i in range(len(labels))],
         "label": labels,
-    }).to_csv(os.path.join(data_dir, "train.csv"), index=False)
+    }).to_csv(train_path, index=False)
     print(f"Image competition metadata ready at: {data_dir}")
 
 _ensure_image_comp_data()`,
 		],
 		injectBeforeBlock: {
 			1: '# クラス数を訓練メタデータから取得します\nn_classes = int(df["label"].nunique())',
-			3: `# 5-fold 学習済みモデルの推論ラッパーとダミー画像バッチ (4枚, RGB, 224x224) を用意してアンサンブル推論を確認します
-model.eval()
+			3: `# StratifiedKFold (5-fold) で fold ごとに独立したモデルをファインチューニングし、別モデルとして保持します
+import copy
+from sklearn.model_selection import StratifiedKFold
+from torch.utils.data import DataLoader, TensorDataset
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+y_codes, _ = pd.factorize(df["label"], sort=True)
+X_images = _make_synth_images(y_codes, seed=42)
+y_tensor = torch.tensor(y_codes, dtype=torch.long)
+
+# 学習前の ImageNet 事前学習済み重みをテンプレートとして保持（fold 間の情報漏洩を防止）
+pretrained_template = copy.deepcopy(model)
 
 class _FoldPredictor:
-    def __init__(self, net):
+    def __init__(self, net, dev):
         self.net = net
+        self.dev = dev
     def predict(self, batch_tensor):
+        self.net.eval()
         with torch.no_grad():
-            return torch.softmax(self.net(batch_tensor), dim=-1).cpu().numpy()
+            logits = self.net(batch_tensor.to(self.dev))
+            return torch.softmax(logits, dim=-1).cpu().numpy()
 
-fold_models = [_FoldPredictor(model) for _ in range(5)]
-test = torch.randn(4, 3, 224, 224)`,
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+fold_models = []
+fold_val_losses = []
+
+for fold, (tr_idx, va_idx) in enumerate(skf.split(np.zeros(len(y_codes)), y_codes)):
+    torch.manual_seed(42 + fold)
+    fold_net = copy.deepcopy(pretrained_template).to(device)
+    fold_net.reset_classifier(n_classes)
+    for param_name, param in fold_net.named_parameters():
+        param.requires_grad = param_name.startswith("classifier")
+
+    optimizer = torch.optim.AdamW(fold_net.classifier.parameters(), lr=8e-3, weight_decay=1e-2)
+    criterion = nn.CrossEntropyLoss()
+    tr_loader = DataLoader(TensorDataset(X_images[tr_idx], y_tensor[tr_idx]), batch_size=24, shuffle=True)
+
+    best_loss = float("inf")
+    best_state = None
+    for _epoch in range(4):
+        fold_net.eval()
+        fold_net.classifier.train()
+        for xb, yb in tr_loader:
+            # 水平反転による簡易データ拡張
+            if torch.rand(1).item() < 0.5:
+                xb = torch.flip(xb, dims=[-1])
+            xb, yb = xb.to(device), yb.to(device)
+            optimizer.zero_grad()
+            loss = criterion(fold_net(xb), yb)
+            loss.backward()
+            optimizer.step()
+
+        fold_net.eval()
+        with torch.no_grad():
+            val_loss = criterion(fold_net(X_images[va_idx].to(device)), y_tensor[va_idx].to(device)).item()
+        if val_loss < best_loss:
+            best_loss = val_loss
+            best_state = {k: v.detach().cpu().clone() for k, v in fold_net.state_dict().items()}
+
+    fold_net.load_state_dict(best_state)
+    fold_val_losses.append(best_loss)
+    fold_models.append(_FoldPredictor(fold_net, device))
+
+test_true_labels = np.arange(min(n_classes, 5))
+test = _make_synth_images(test_true_labels, seed=999)`,
 		},
 		postCells: [
-			'print("Fold-averaged test_pred shape:", test_pred.shape)\nprint(test_pred.round(3))',
+			`fold0_pred = fold_models[0].predict(test)
+fold1_pred = fold_models[1].predict(test)
+print("Mean fold best val loss:", round(float(np.mean(fold_val_losses)), 4))
+print("Max prediction diff (fold 0 vs fold 1):", round(float(np.abs(fold0_pred - fold1_pred).max()), 4))
+print("Fold-averaged test_pred shape:", test_pred.shape)
+print("Predicted classes:", test_pred.argmax(axis=1), "| True classes:", test_true_labels)`,
 		],
 	},
 	{
@@ -369,7 +463,7 @@ test = torch.randn(4, 3, 224, 224)`,
 		mdxPath: "content/competitions/nlp-text-classification.mdx",
 		setupCells: [
 			`# [Colab / ローカル環境用セットアップ]
-# transformers の確認と、訓練・テスト分離済みのテキスト分類サンプルデータを準備します。
+# transformers の確認と、重複のない訓練・テスト分離済みテキスト分類サンプルデータを準備します。
 import os
 import subprocess
 import sys
@@ -388,24 +482,50 @@ def _ensure_nlp_comp_data():
     if not getattr(orig_read_csv, "_is_nlp_comp_wrapped", False):
         def _patched_read_csv(filepath_or_buffer, *args, **kwargs):
             if isinstance(filepath_or_buffer, str) and filepath_or_buffer.startswith("/kaggle/input/<competition>/"):
-                rel = filepath_or_buffer[len("/kaggle/input/<competition>/"):]
-                filepath_or_buffer = os.path.join(data_dir, rel)
+                if not os.path.exists(filepath_or_buffer):
+                    rel = filepath_or_buffer[len("/kaggle/input/<competition>/"):]
+                    filepath_or_buffer = os.path.join(data_dir, rel)
             return orig_read_csv(filepath_or_buffer, *args, **kwargs)
         _patched_read_csv._is_nlp_comp_wrapped = True
         pd.read_csv = _patched_read_csv
 
-    pos_samples = [
-        "Stratified cross validation kept our local score aligned with the leaderboard.",
-        "Combining TF-IDF features with gradient boosting built a strong baseline.",
-        "Careful feature engineering improved generalization on unseen test records.",
-        "Ensembling diverse architectures reduced variance and stabilized predictions.",
-    ] * 8
-    neg_samples = [
-        "Fitting the vectorizer before splitting leaked validation vocabulary.",
-        "Overfitting to the public leaderboard caused a severe private shakeup.",
-        "Missing value imputation across the full table distorted fold evaluation.",
-        "Ignoring class imbalance degraded macro F1 on minority categories.",
-    ] * 8
+    train_path = os.path.join(data_dir, "train.csv")
+    test_path = os.path.join(data_dir, "test.csv")
+    if os.path.exists(train_path) and os.path.exists(test_path):
+        print(f"Using existing NLP competition dataset at: {data_dir}")
+        return
+
+    pos_subjects = [
+        "Stratified cross validation",
+        "Out-of-fold feature encoding",
+        "Ensembling diverse architectures",
+        "Careful pipeline isolation",
+        "Domain-driven feature engineering",
+        "Calibrated probability blending",
+    ]
+    pos_outcomes = [
+        "kept local validation aligned with the private leaderboard.",
+        "improved generalization on unseen test records.",
+        "reduced prediction variance across all folds.",
+        "boosted downstream classification accuracy reliably.",
+    ]
+    neg_subjects = [
+        "Fitting the vectorizer before splitting",
+        "Global missing-value imputation across folds",
+        "Overfitting hyperparameters to public scores",
+        "Unchecked target leakage in preprocessing",
+        "Ignoring severe class imbalance during training",
+        "Mixing validation statistics into training features",
+    ]
+    neg_outcomes = [
+        "leaked validation information and distorted evaluation.",
+        "caused a severe private leaderboard shakeup.",
+        "degraded generalization on held-out test samples.",
+        "inflated local metrics while hurting real accuracy.",
+    ]
+
+    pos_samples = [f"{s} {o}" for s in pos_subjects for o in pos_outcomes]
+    neg_samples = [f"{s} {o}" for s in neg_subjects for o in neg_outcomes]
 
     train_df = pd.DataFrame({
         "text": pos_samples + neg_samples,
@@ -416,11 +536,11 @@ def _ensure_nlp_comp_data():
             "Out-of-fold validation prevented leakage and improved model blending.",
             "Target leakage inflated validation metrics and ruined test performance.",
             "Transfer learning with pretrained transformers boosted text accuracy.",
-            "Unchecked distribution shift between train and test broke predictions.",
+            "Global scaling before splitting leaked statistics and caused shakeup.",
         ]
     })
-    train_df.to_csv(os.path.join(data_dir, "train.csv"), index=False)
-    test_df.to_csv(os.path.join(data_dir, "test.csv"), index=False)
+    train_df.to_csv(train_path, index=False)
+    test_df.to_csv(test_path, index=False)
     print(f"NLP competition dataset ready at: {data_dir}")
 
 _ensure_nlp_comp_data()`,
@@ -430,18 +550,69 @@ _ensure_nlp_comp_data()`,
 test_df = pd.read_csv("/kaggle/input/<competition>/test.csv")
 pred_tfidf = model.predict_proba(tfidf.transform(test_df["text"]))[:, 1]
 
-# 続く BERT トークナイズ用にクラス数とテスト文章リストを設定します
+# 続く BERT ファインチューニング用にクラス数と訓練文章リストを設定します
 n_classes = int(df["label"].nunique())
-texts = test_df["text"].tolist()`,
-			2: `# BERT モデルでテスト文章の陽性クラス確率を推論します
+texts = df["text"].tolist()`,
+			2: `# 訓練ラベルを使って BERT 分類層を含むモデルをファインチューニングし、検証ロス最小の重みでテスト文章を推論します
+import numpy as np
 import torch
+from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, TensorDataset
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+torch.manual_seed(42)
+model = model.to(device)
+
+labels_np = df["label"].to_numpy(dtype=np.int64)
+tr_idx, va_idx = train_test_split(
+    np.arange(len(labels_np)), test_size=0.25, stratify=labels_np, random_state=42
+)
+
+tr_dataset = TensorDataset(
+    enc["input_ids"][tr_idx],
+    enc["attention_mask"][tr_idx],
+    torch.tensor(labels_np[tr_idx], dtype=torch.long),
+)
+tr_loader = DataLoader(tr_dataset, batch_size=8, shuffle=True)
+optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5, weight_decay=0.01)
+
+best_val_loss = float("inf")
+best_bert_state = None
+for _epoch in range(4):
+    model.train()
+    for b_ids, b_mask, b_y in tr_loader:
+        b_ids, b_mask, b_y = b_ids.to(device), b_mask.to(device), b_y.to(device)
+        optimizer.zero_grad()
+        out = model(input_ids=b_ids, attention_mask=b_mask, labels=b_y)
+        out.loss.backward()
+        optimizer.step()
+
+    model.eval()
+    with torch.no_grad():
+        val_out = model(
+            input_ids=enc["input_ids"][va_idx].to(device),
+            attention_mask=enc["attention_mask"][va_idx].to(device),
+            labels=torch.tensor(labels_np[va_idx], dtype=torch.long, device=device),
+        )
+        val_loss = val_out.loss.item()
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        best_bert_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+
+model.load_state_dict(best_bert_state)
 model.eval()
+test_enc = tok(
+    test_df["text"].tolist(), padding=True, truncation=True, max_length=256, return_tensors="pt"
+)
 with torch.no_grad():
-    pred_bert = torch.softmax(model(**enc).logits, dim=-1)[:, 1].cpu().numpy()`,
+    test_logits = model(
+        input_ids=test_enc["input_ids"].to(device),
+        attention_mask=test_enc["attention_mask"].to(device),
+    ).logits
+    pred_bert = torch.softmax(test_logits, dim=-1)[:, 1].cpu().numpy()`,
 		},
 		postCells: [
-			'pd.DataFrame({"text": texts, "pred_tfidf": pred_tfidf.round(3), "pred_bert": pred_bert.round(3), "blend": pred.round(3)})',
+			'print(f"Fine-tuned BERT best validation loss: {best_val_loss:.4f}")\npd.DataFrame({"text": test_df["text"], "pred_tfidf": pred_tfidf.round(3), "pred_bert": pred_bert.round(3), "blend": pred.round(3)})',
 		],
 	},
 	{
@@ -894,7 +1065,8 @@ oof = np.where(y_valid == 1, rng.beta(2.6, 3.8, size=n_samples), rng.beta(1.1, 1
 		slug: "learn/advanced/06-big-data-memory",
 		mdxPath: "content/learn/advanced/06-big-data-memory.mdx",
 		setupCells: [
-			`# polars の確認・自動インストールと、チャンク処理・遅延評価用のサンプル CSV ("big.csv") を作成します
+			`# polars の確認・自動インストールと、未作成時のみチャンク処理・遅延評価用のサンプル CSV ("big.csv") を生成します
+import os
 import subprocess
 import sys
 
@@ -906,15 +1078,19 @@ except ImportError:
 import numpy as np
 import pandas as pd
 
-rng = np.random.default_rng(42)
-n_rows = 50_000
-sample_df = pd.DataFrame({
-    "id": rng.choice(["A", "B", "C", "D"], size=n_rows),
-    "y": rng.normal(100.0, 20.0, size=n_rows).round(2),
-    "count": rng.integers(1, 500, size=n_rows),
-})
-sample_df.to_csv("big.csv", index=False)
-print("Created sample big.csv:", sample_df.shape)`,
+if not os.path.exists("big.csv"):
+    rng = np.random.default_rng(42)
+    n_rows = 50_000
+    sample_df = pd.DataFrame({
+        "id": rng.choice(["A", "B", "C", "D"], size=n_rows),
+        "y": rng.normal(100.0, 20.0, size=n_rows).round(2),
+        "count": rng.integers(1, 500, size=n_rows),
+    })
+    sample_df.to_csv("big.csv", index=False)
+    print("Created sample big.csv:", sample_df.shape)
+else:
+    sample_df = pd.read_csv("big.csv", nrows=50_000)
+    print("Using existing big.csv (skipped sample generation):", sample_df.shape)`,
 		],
 		postCells: [
 			'before_kb = sample_df.memory_usage(deep=True).sum() / 1024\nreduced_df = reduce_mem(sample_df.copy())\nafter_kb = reduced_df.memory_usage(deep=True).sum() / 1024\nprint(f"Memory usage: {before_kb:.1f} KB -> {after_kb:.1f} KB")\nprint("Chunk sum:\\n", agg)\nprint("Polars lazy mean:\\n", out)',
