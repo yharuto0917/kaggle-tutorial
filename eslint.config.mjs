@@ -19,6 +19,7 @@ const eslintConfig = [
 			".wrangler/**",
 			".source/**",
 			"public/pagefind/**",
+			"public/notebooks/**",
 			"out/**",
 			"build/**",
 			"coverage/**",
