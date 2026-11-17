@@ -53,7 +53,7 @@ describe("<RunLinks>", () => {
 
 	it("未登録レッスンではダミーの Colab リンクを表示せず Kaggle リンクのみ表示する", () => {
 		render(
-			<LessonProvider lessonId="/learn/advanced/01-target-encoding">
+			<LessonProvider lessonId="/learn/ml-basics/01-what-is-ml">
 				<RunLinks kaggle="https://www.kaggle.com/code" />
 			</LessonProvider>,
 		);
@@ -64,13 +64,13 @@ describe("<RunLinks>", () => {
 	});
 
 	it("すべてのリンクが未解決の場合は何も描画しない", () => {
-		mockedPathname = "/learn/advanced/01-target-encoding";
+		mockedPathname = "/learn/ml-basics/01-what-is-ml";
 		const { container } = render(<RunLinks />);
 		expect(container.firstChild).toBeNull();
 	});
 
 	it("明示的な notebook prop 指定時は現在の URL より優先し、不正ドメインの URL は除外する", () => {
-		mockedPathname = "/learn/advanced/01-target-encoding";
+		mockedPathname = "/learn/ml-basics/01-what-is-ml";
 		render(
 			<RunLinks
 				notebook="competitions/house-prices"

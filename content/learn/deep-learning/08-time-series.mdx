@@ -19,7 +19,7 @@ description: 特徴量ベースと系列モデルの使い分け、時系列の�
 # ラグ特徴と移動統計（グループごと・時間順を保つ）
 df = df.sort_values(["id", "date"])
 df["lag_1"] = df.groupby("id")["y"].shift(1)
-df["roll_mean_7"] = df.groupby("id")["y"].shift(1).rolling(7).mean()
+df["roll_mean_7"] = df.groupby("id")["y"].transform(lambda s: s.shift(1).rolling(7).mean())
 ```
 
 `shift(1)` を挟むことで、**予測時点で未来の値を使わない**ようにします。

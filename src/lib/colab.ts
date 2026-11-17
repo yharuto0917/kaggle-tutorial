@@ -21,8 +21,11 @@ const PLACEHOLDER_COLAB_URLS: ReadonlySet<string> = new Set([
  * 未登録のスラッグではダミー遷移を防ぐため Colab リンクを生成しない。
  */
 export const REGISTERED_NOTEBOOK_SLUGS = [
-	// Competitions (Part 1: 2件)
+	// Competitions (5件)
 	"competitions/house-prices",
+	"competitions/image-classification",
+	"competitions/nlp-text-classification",
+	"competitions/playground-series",
 	"competitions/titanic",
 	// L1: Python & データ分析基礎 (7件)
 	"learn/python-data-analysis/01-python-basics",
@@ -45,6 +48,27 @@ export const REGISTERED_NOTEBOOK_SLUGS = [
 	"learn/intro-competitions/04-titanic-cv",
 	"learn/intro-competitions/06-house-prices-baseline",
 	"learn/intro-competitions/07-house-prices-ensemble",
+	// L5: 勾配ブースティング (3件)
+	"learn/gradient-boosting/04-xgboost",
+	"learn/gradient-boosting/05-lightgbm",
+	"learn/gradient-boosting/06-catboost",
+	// L6: アンサンブル・コンペ実践フロー (2件)
+	"learn/ensemble-workflow/02-averaging-blending",
+	"learn/ensemble-workflow/03-stacking",
+	// L7: ディープラーニングと多様なデータ (7件)
+	"learn/deep-learning/02-pytorch-intro",
+	"learn/deep-learning/03-tabular-dl",
+	"learn/deep-learning/04-cnn-basics",
+	"learn/deep-learning/05-transfer-learning",
+	"learn/deep-learning/06-nlp-classic",
+	"learn/deep-learning/07-transformers",
+	"learn/deep-learning/08-time-series",
+	// L8: 上級テクニック・運用 (5件)
+	"learn/advanced/01-target-encoding",
+	"learn/advanced/02-adversarial-validation",
+	"learn/advanced/03-pseudo-labeling",
+	"learn/advanced/04-post-processing",
+	"learn/advanced/06-big-data-memory",
 ] as const;
 
 export const REGISTERED_NOTEBOOKS: ReadonlySet<string> = new Set<string>(REGISTERED_NOTEBOOK_SLUGS);
